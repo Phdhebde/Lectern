@@ -1,0 +1,22 @@
+title = "Case: invisible resource"
+kind = "diagnostic"
+exam_only = true
+context = "A contractor says the server srv-db-01 does not appear in their portal."
+
+[[steps]]
+action = "Resource details in the console."
+image = "step-1.png"
+alt = "Resource details"
+annotations = [{ type = "marker", x = 27, y = 29, label = "!" }]
+
+[[questions]]
+ref = "eng-case-group-1"
+pool = "case"
+prompt = "What is the most likely cause?"
+choices = [{ text = "The contractor is not in the dba group", correct = true }, { text = "The gateway is offline" }]
+
+[[questions]]
+ref = "eng-case-group-2"
+pool = "case"
+prompt = "What do you do?"
+choices = [{ text = "Add the user to the right group after approval", correct = true }, { text = "Make the resource public" }]

@@ -1,0 +1,23 @@
+[[questions]]
+ref = "disc-quiz-1"
+pool = "quiz"
+module = "why-a-gateway"
+prompt = "What does a session gateway avoid exposing?"
+explanation = "Users connect to the gateway; target servers stay unreachable from outside."
+choices = [
+  { text = "The protected servers", correct = true },
+  { text = "The user's browser" },
+  { text = "The e-mail server" },
+]
+
+[[questions]]
+ref = "disc-quiz-2"
+pool = "quiz"
+module = "recording"
+prompt = "Which teams benefit from session recordings? (several answers)"
+explanation = "Security, compliance and managers all use recordings."
+choices = [
+  { text = "Security", correct = true },
+  { text = "Compliance", correct = true },
+  { text = "Nobody" },
+]

@@ -1,0 +1,22 @@
+title = "Case: enrolment refused"
+kind = "diagnostic"
+exam_only = true
+context = "A technician enrols a new gateway. The command fails with the message shown below."
+
+[[steps]]
+action = "Error displayed after running the enrolment command."
+image = "step-1.png"
+alt = "Enrolment error"
+annotations = [{ type = "box", x = 25, y = 22, w = 60, h = 14 }]
+
+[[questions]]
+ref = "eng-case-clock-1"
+pool = "case"
+prompt = "What is the most likely cause?"
+choices = [{ text = "The VM clock is not synchronized", correct = true }, { text = "The licence expired" }, { text = "The user is not in the right group" }]
+
+[[questions]]
+ref = "eng-case-clock-2"
+pool = "case"
+prompt = "What do you do?"
+choices = [{ text = "Configure NTP and re-run the command", correct = true }, { text = "Reinstall the OS" }]

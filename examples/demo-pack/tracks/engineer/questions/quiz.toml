@@ -1,0 +1,15 @@
+[[questions]]
+ref = "eng-quiz-arch-1"
+pool = "quiz"
+module = "architecture"
+prompt = "Which flow does the gateway agent need?"
+explanation = "Only an outbound connection on 443/tcp is needed."
+choices = [{ text = "Outbound 443/tcp", correct = true }, { text = "Inbound 3389/tcp" }, { text = "Inbound 22/tcp" }]
+
+[[questions]]
+ref = "eng-quiz-ts-1"
+pool = "quiz"
+module = "troubleshooting"
+prompt = "What do you attach to an escalation?"
+explanation = "The diagnostic bundle gives the next level everything needed."
+choices = [{ text = "A diagnostic bundle", correct = true }, { text = "Nothing" }]

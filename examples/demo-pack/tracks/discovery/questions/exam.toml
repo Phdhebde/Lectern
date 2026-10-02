@@ -1,0 +1,29 @@
+[[questions]]
+ref = "disc-exam-1"
+pool = "exam"
+prompt = "A session gateway mainly protects…"
+choices = [{ text = "Privileged access", correct = true }, { text = "Printer queues" }, { text = "Wi-Fi passwords" }]
+
+[[questions]]
+ref = "disc-exam-2"
+pool = "exam"
+prompt = "Session recordings help to…"
+choices = [{ text = "Audit who did what", correct = true }, { text = "Speed up the network" }]
+
+[[questions]]
+ref = "disc-exam-3"
+pool = "exam"
+prompt = "Do users connect directly to target servers through a gateway?"
+choices = [{ text = "No, the gateway brokers the session", correct = true }, { text = "Yes, always" }]
+
+[[questions]]
+ref = "disc-exam-4"
+pool = "exam"
+prompt = "Which accounts are the most targeted by attackers?"
+choices = [{ text = "Privileged accounts", correct = true }, { text = "Guest accounts" }, { text = "Disabled accounts" }]
+
+[[questions]]
+ref = "disc-exam-5"
+pool = "exam"
+prompt = "Which protocols can typically be brokered? (several answers)"
+choices = [{ text = "RDP", correct = true }, { text = "SSH", correct = true }, { text = "FTP over carrier pigeon" }]

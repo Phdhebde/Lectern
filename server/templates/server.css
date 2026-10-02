@@ -1,0 +1,19 @@
+/* Styles of server-rendered pages. Colours come from /theme.css tokens only. */
+*{box-sizing:border-box}
+body{margin:0;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);line-height:1.5}
+a{color:var(--color-primary)}
+.v-header{background:var(--color-surface);border-bottom:1px solid var(--color-border);padding:12px 24px}
+.v-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--color-text);font-weight:700;font-family:var(--font-heading)}
+.v-brand img{height:32px}
+.v-main{max-width:820px;margin:32px auto;padding:0 16px}
+.v-main h1{font-family:var(--font-heading)}
+.v-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);padding:24px;display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.v-badge{flex:none}
+.v-status{display:inline-block;margin:0 0 12px;padding:4px 12px;border-radius:999px;font-weight:700}
+.v-status-valid{background:var(--color-success);color:#fff}
+.v-status-expired,.v-status-superseded{background:var(--color-muted);color:#fff}
+.v-status-revoked{background:var(--color-danger);color:#fff}
+dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}
+dt{color:var(--color-muted)}
+dd{margin:0;font-weight:600}
+.v-footer{max-width:820px;margin:0 auto 32px;padding:0 16px;display:flex;gap:16px;font-size:14px}

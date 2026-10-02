@@ -1,0 +1,10 @@
+title = "Case: multisite"
+kind = "diagnostic"
+exam_only = true
+context = "A regulated customer with three sites reports intermittent session drops (multisite). Analyse and propose a target architecture."
+
+[[questions]]
+ref = "exp-case-multisite-1"
+pool = "case"
+format = "written"
+prompt = "Describe your diagnosis and the corrective actions, with priorities."

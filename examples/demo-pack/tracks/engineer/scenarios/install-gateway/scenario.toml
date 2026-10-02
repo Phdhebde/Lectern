@@ -1,0 +1,31 @@
+title = "Install a gateway agent"
+kind = "implementation"
+position = 1
+context = "A customer wants to publish two Linux servers. You install the gateway agent on a VM of their network."
+pitfalls = """
+- Forgetting NTP: the enrolment token is then rejected.
+- An HTTP proxy must be declared during installation.
+"""
+
+[[steps]]
+action = "In **Gateways**, click *Add a gateway* and copy the enrolment command."
+image = "step-1.png"
+alt = "Gateways page with the add button"
+expected = "An enrolment command valid for 1 hour is displayed."
+annotations = [
+  { type = "box", x = 23, y = 21, w = 74, h = 16, label = "1" },
+  { type = "arrow", x = 70, y = 70, x2 = 85, y2 = 80, label = "2" },
+]
+
+[[steps]]
+action = "Run the command on the VM, then refresh the page."
+image = "step-2.png"
+alt = "Gateway shown online"
+expected = "The gateway appears **online** with a green dot."
+annotations = [{ type = "marker", x = 27, y = 29, label = "1" }]
+
+[[questions]]
+ref = "eng-sc-install-1"
+pool = "quiz"
+prompt = "Why is NTP important during installation?"
+choices = [{ text = "The enrolment token is time-limited", correct = true }, { text = "It is not" }]

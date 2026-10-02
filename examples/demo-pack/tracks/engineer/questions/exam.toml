@@ -1,0 +1,65 @@
+[[questions]]
+ref = "eng-exam-1"
+pool = "exam"
+prompt = "Which port does the agent use outbound?"
+choices = [{ text = "443/tcp", correct = true }, { text = "3389/tcp" }]
+
+[[questions]]
+ref = "eng-exam-2"
+pool = "exam"
+prompt = "What is required for tokens to be accepted?"
+choices = [{ text = "Synchronized clocks (NTP)", correct = true }, { text = "A static IP" }]
+
+[[questions]]
+ref = "eng-exam-3"
+pool = "exam"
+prompt = "Where are sessions recorded?"
+choices = [{ text = "On the platform", correct = true }, { text = "On the user's laptop" }]
+
+[[questions]]
+ref = "eng-exam-4"
+pool = "exam"
+prompt = "A resource is invisible to a user. First check…"
+choices = [{ text = "Their group membership", correct = true }, { text = "The screen resolution" }]
+
+[[questions]]
+ref = "eng-exam-5"
+pool = "exam"
+prompt = "Which protocol is used for SSO?"
+choices = [{ text = "OIDC", correct = true }, { text = "FTP" }]
+
+[[questions]]
+ref = "eng-exam-6"
+pool = "exam"
+prompt = "Licences are…"
+choices = [{ text = "Concurrent", correct = true }, { text = "Per server" }]
+
+[[questions]]
+ref = "eng-exam-7"
+pool = "exam"
+prompt = "Escalation requires…"
+choices = [{ text = "A diagnostic bundle", correct = true }, { text = "A phone call only" }]
+
+[[questions]]
+ref = "eng-exam-8"
+pool = "exam"
+prompt = "An agent shows offline. First check…"
+choices = [{ text = "Outbound connectivity", correct = true }, { text = "The printer" }]
+
+[[questions]]
+ref = "eng-exam-9"
+pool = "exam"
+prompt = "Recording playback is done from…"
+choices = [{ text = "The console", correct = true }, { text = "The target server" }]
+
+[[questions]]
+ref = "eng-recert-1"
+pool = "recert"
+prompt = "Which feature is new in version 2?"
+choices = [{ text = "Web targets", correct = true }, { text = "Fax support" }]
+
+[[questions]]
+ref = "eng-recert-2"
+pool = "recert"
+prompt = "In version 2, gateways update…"
+choices = [{ text = "Automatically", correct = true }, { text = "Never" }]

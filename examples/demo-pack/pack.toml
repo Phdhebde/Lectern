@@ -1,0 +1,24 @@
+# Demo content pack — fictional product, used for development and tests.
+format = 1
+name = "Demo pack"
+
+[[levels]]
+slug = "partner-silver"
+org_kind = "partner"
+name = "Silver"
+rank = 1
+requirements = { associate = 1, engineer = 2 }
+
+[[levels]]
+slug = "partner-gold"
+org_kind = "partner"
+name = "Gold"
+rank = 2
+requirements = { associate = 2, engineer = 3 }
+
+[[levels]]
+slug = "partner-platinum"
+org_kind = "partner"
+name = "Platinum"
+rank = 3
+requirements = { associate = 3, engineer = 4, expert = 1 }
