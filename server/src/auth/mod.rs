@@ -300,7 +300,24 @@ pub fn clear_session_cookie(state: &AppState) -> Cookie<'static> {
 }
 
 /// Finds or creates a user by e-mail (case-insensitive).
+/// Normalizes a person's name: no control characters and none of the characters that
+/// carry Markdown or HTML syntax, because names are interpolated into e-mails rendered
+/// from Markdown (a name like `[Click](https://…)` must not become a link).
+pub fn clean_name(raw: &str) -> String {
+    raw.chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .filter(|c| !matches!(c, '[' | ']' | '(' | ')' | '<' | '>' | '`' | '*' | '_' | '#' | '|' | '\\' | '!' | '~'))
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .chars()
+        .take(120)
+        .collect()
+}
+
 pub async fn upsert_user_by_email(db: &PgPool, email: &str, display_name: &str) -> AppResult<Uuid> {
+    let display_name = &clean_name(display_name);
     let existing: Option<Uuid> = sqlx::query_scalar("SELECT id FROM users WHERE lower(email) = lower($1)")
         .bind(email)
         .fetch_optional(db)
@@ -366,5 +383,13 @@ mod tests {
         assert_eq!(hash_token(&a).len(), 32);
         assert!(constant_time_eq(b"abc", b"abc"));
         assert!(!constant_time_eq(b"abc", b"abd"));
+    }
+
+    #[test]
+    fn names_cannot_carry_markup() {
+        assert_eq!(clean_name("  Ada\n Lovelace "), "Ada Lovelace");
+        assert_eq!(clean_name("[Click](https://evil.test)"), "Clickhttps://evil.test");
+        assert_eq!(clean_name("<b>x</b>"), "bx/b");
+        assert_eq!(clean_name("Jean-Pierre O'Neil"), "Jean-Pierre O'Neil");
     }
 }

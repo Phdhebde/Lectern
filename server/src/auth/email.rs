@@ -18,6 +18,8 @@ use crate::state::AppState;
 
 const TOKEN_MINUTES: i64 = 15;
 const MAX_REQUESTS_PER_HOUR: i64 = 5;
+/// Instance-wide cap, so the sign-in form cannot be used to flood many inboxes.
+const MAX_REQUESTS_PER_MINUTE_GLOBAL: i64 = 60;
 
 #[derive(Deserialize)]
 pub struct LoginRequest {
@@ -55,15 +57,20 @@ pub async fn request_link(State(state): State<AppState>, Json(req): Json<LoginRe
     if !is_plausible_email(&email) {
         return Err(AppError::bad_request("invalid_email", "invalid e-mail address"));
     }
-    let recent: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM login_tokens WHERE lower(email) = lower($1) AND created_at > now() - interval '1 hour'",
+    let (recent, global): (i64, i64) = sqlx::query_as(
+        "SELECT count(*) FILTER (WHERE lower(email) = lower($1) AND created_at > now() - interval '1 hour'),
+                count(*) FILTER (WHERE created_at > now() - interval '1 minute')
+         FROM login_tokens WHERE created_at > now() - interval '1 hour'",
     )
     .bind(&email)
     .fetch_one(&state.db)
     .await?;
+    if global >= MAX_REQUESTS_PER_MINUTE_GLOBAL {
+        tracing::warn!("sign-in link requests throttled instance-wide");
+    }
     // Same response whether or not the limit is hit, to avoid account enumeration;
     // the limit protects inboxes from being flooded.
-    if recent < MAX_REQUESTS_PER_HOUR {
+    if recent < MAX_REQUESTS_PER_HOUR && global < MAX_REQUESTS_PER_MINUTE_GLOBAL {
         let token = random_token();
         sqlx::query(
             "INSERT INTO login_tokens (token_hash, email, display_name, return_to, expires_at)
@@ -71,7 +78,7 @@ pub async fn request_link(State(state): State<AppState>, Json(req): Json<LoginRe
         )
         .bind(hash_token(&token))
         .bind(&email)
-        .bind(req.display_name.trim().chars().take(120).collect::<String>())
+        .bind(super::clean_name(&req.display_name))
         .bind(safe_return_to(req.return_to.as_deref()))
         .bind(Utc::now() + Duration::minutes(TOKEN_MINUTES))
         .execute(&state.db)

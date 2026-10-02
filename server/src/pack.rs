@@ -286,12 +286,13 @@ impl PackFiles {
             if name.split('/').any(|seg| seg.starts_with('.') || seg == "__MACOSX") {
                 continue;
             }
-            total += f.size();
+            // Count the bytes actually inflated: sizes declared in the archive can lie.
+            let mut buf = Vec::new();
+            f.by_ref().take(max_total - total + 1).read_to_end(&mut buf)?;
+            total += buf.len() as u64;
             if total > max_total {
                 bail!("archive too large once uncompressed");
             }
-            let mut buf = Vec::with_capacity(f.size() as usize);
-            f.by_ref().take(max_total).read_to_end(&mut buf)?;
             files.insert(name, buf);
         }
         // Accept archives whose content sits in a single top-level folder.

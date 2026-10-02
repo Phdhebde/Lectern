@@ -53,8 +53,8 @@ pub async fn update_profile(
     Json(req): Json<ProfileUpdate>,
 ) -> AppResult<Json<Value>> {
     if let Some(name) = &req.display_name {
-        let name = name.trim();
-        if name.is_empty() || name.chars().count() > 120 {
+        let name = auth::clean_name(name);
+        if name.is_empty() {
             return Err(AppError::bad_request("invalid_name", "name must be 1-120 characters"));
         }
         sqlx::query("UPDATE users SET display_name = $2 WHERE id = $1")
