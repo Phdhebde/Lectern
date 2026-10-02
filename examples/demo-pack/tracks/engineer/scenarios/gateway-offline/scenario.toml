@@ -1,0 +1,23 @@
+title = "Gateway offline"
+kind = "diagnostic"
+family = "gateway-offline"
+position = 2
+context = "Users cannot open any session. The console shows the gateway offline."
+pitfalls = "Restarting the agent without checking the outbound flow only hides the problem."
+
+[[steps]]
+action = "Observe the gateway status and its last-seen time."
+image = "step-1.png"
+alt = "Gateway shown offline"
+expected = "The gateway is offline since 10:42: something changed at that time."
+annotations = [{ type = "box", x = 25, y = 22, w = 50, h = 14, label = "1" }]
+
+[[steps]]
+action = "On the VM, test the outbound flow: `curl -v https://platform.example.invalid`."
+expected = "The connection times out: a firewall change blocked 443/tcp. Ask the customer to restore it."
+
+[[questions]]
+ref = "eng-sc-offline-1"
+pool = "quiz"
+prompt = "What was the cause?"
+choices = [{ text = "Outbound 443/tcp blocked", correct = true }, { text = "Expired licence" }]

@@ -1,0 +1,38 @@
+# Example instance overlay. Copy it into your GitOps repository and adapt:
+# host name, image tag, configuration, branding files and the secret.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: academy
+resources:
+  - ../../base
+  - ratelimit.yaml
+images:
+  - name: ghcr.io/example/lectern
+    newName: registry.example.com/lectern
+    newTag: "0.1.0"
+configMapGenerator:
+  - name: lectern-config
+    files:
+      - lectern.toml
+  - name: lectern-branding
+    files:
+      - branding/logo.svg
+      - branding/favicon.svg
+patches:
+  - target: { kind: Ingress, name: lectern }
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: academy.example.com
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: academy.example.com
+      # Middleware references are <namespace>-<name>@kubernetescrd.
+      - op: add
+        path: /metadata/annotations/traefik.ingress.kubernetes.io~1router.middlewares
+        value: academy-lectern-ratelimit@kubernetescrd,academy-lectern-request-limits@kubernetescrd
+# The `lectern-secrets` Secret is NOT stored here in clear text. Create it with your
+# secret tooling (SOPS, Sealed Secrets, External Secrets...) with these keys:
+#   DATABASE_URL                         postgres://user:password@host:5432/lectern?sslmode=require
+#   LECTERN__AUTH__OIDC__CLIENT_SECRET   OIDC client secret
+#   LECTERN__MAIL__SMTP_URL              smtps://user:password@smtp.example.com:465

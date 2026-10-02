@@ -1,0 +1,126 @@
+# Server-rendered texts (e-mails, verification page, certificates, badges).
+# Any key can be overridden per instance in <branding_dir>/locales/en.toml.
+
+[email.login]
+subject = "Your sign-in link to {{ instance.name }}"
+body = """
+Hello,
+
+Use the link below to sign in to {{ instance.name }}. It is valid for {{ minutes }} minutes and can be used only once.
+
+[Sign in]({{ link }})
+
+If you did not request it, you can ignore this message.
+"""
+
+[email.membership_requested]
+subject = "{{ learner }} asks to join {{ org }}"
+body = """
+Hello,
+
+{{ learner }} ({{ email }}) asks to join **{{ org }}** on {{ instance.name }}.
+
+[Approve or reject the request]({{ link }})
+"""
+
+[email.membership_decided]
+subject = "Your membership of {{ org }}"
+body = """
+Hello {{ name }},
+
+{% if approved %}Your membership of **{{ org }}** has been approved. Tracks reserved for your organization are now available.{% else %}Your request to join **{{ org }}** was not accepted. Please contact your organization's training manager.{% endif %}
+
+[Go to {{ instance.name }}]({{ link }})
+"""
+
+[email.exam_passed]
+subject = "Congratulations: {{ track }} certification achieved"
+body = """
+Hello {{ name }},
+
+You passed the **{{ track }}** exam.{% if expires %} Your certification is valid until {{ expires }}.{% endif %}
+
+- [Download your certificate]({{ certificate_link }})
+- [Public verification page]({{ verify_link }})
+
+Share your badge on your professional profile from your account.
+"""
+
+[email.exam_failed]
+subject = "Your {{ track }} exam result"
+body = """
+Hello {{ name }},
+
+You did not reach the passing score of the **{{ track }}** exam this time. Review the relevant modules and try again{% if retry_at %} from {{ retry_at }}{% endif %}.
+
+[Review the track]({{ link }})
+"""
+
+[email.exam_review]
+subject = "Your {{ track }} exam is being reviewed"
+body = """
+Hello {{ name }},
+
+Your answers to the **{{ track }}** exam have been recorded. An evaluator will grade them; you will receive the result by e-mail.
+"""
+
+[email.expiry_learner]
+subject = "Your {{ track }} certification expires in {{ days }} days"
+body = """
+Hello {{ name }},
+
+Your **{{ track }}** certification expires on {{ expires }}. Recertification is open: take it now to keep your certification.
+
+[Take the recertification]({{ link }})
+"""
+
+[email.expiry_manager]
+subject = "{{ learner }}: {{ track }} certification to renew within {{ days }} days"
+body = """
+Hello,
+
+The **{{ track }}** certification of {{ learner }} ({{ org }}) expires on {{ expires }}. Expired certifications no longer count towards your organization's requirements.
+
+[Open the dashboard]({{ link }})
+"""
+
+[email.new_content]
+subject = "New content in the {{ track }} track"
+body = """
+Hello {{ name }},
+
+{{ message }}
+
+[Open the track]({{ link }})
+"""
+
+[verify]
+title = "Certification verification"
+valid = "Valid certification"
+expired = "Expired certification"
+revoked = "Revoked certification"
+superseded = "Renewed certification"
+private = "The holder chose not to make this certification public."
+not_found = "No certification matches this identifier."
+holder = "Holder"
+track = "Certification"
+issued = "Issued on"
+expires = "Expires on"
+never = "Does not expire"
+issuer = "Issuer"
+identifier = "Identifier"
+
+[certificate]
+title = "Certificate"
+intro = "This certifies that"
+achievement = "has achieved the certification"
+issued = "Issued on"
+expires = "Valid until"
+verify = "Verify this certificate:"
+
+[date]
+format = "%Y-%m-%d"
+
+[footer]
+legal = "Legal notice"
+privacy = "Privacy"

@@ -1,0 +1,25 @@
+title = "Discovery"
+summary = "Understand what a session gateway is and why privileged access matters."
+description = """
+A short, free introduction for everyone. No prerequisite.
+At the end, take a 5-question quiz and earn a shareable badge.
+"""
+audiences = ["public"]
+position = 1
+estimated_minutes = 20
+
+[badge]
+label = "DISCOVERY"
+subtitle = "Explorer"
+color = "#0f766e"
+
+[exam]
+bank_factor = 1
+
+[[exam.sections]]
+title = "Quiz"
+kind = "questions"
+pool = "exam"
+question_count = 5
+duration_minutes = 10
+pass_percent = 70

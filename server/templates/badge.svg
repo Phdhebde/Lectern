@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400" role="img" aria-label="{{ track }}">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="{{ color }}"/>
+      <stop offset="1" stop-color="{{ color_dark }}"/>
+    </linearGradient>
+  </defs>
+  <polygon points="200,12 363,106 363,294 200,388 37,294 37,106" fill="url(#g)" stroke="{{ accent }}" stroke-width="10"/>
+  <polygon points="200,46 333,123 333,277 200,354 67,277 67,123" fill="none" stroke="{{ text_color }}" stroke-opacity="0.35" stroke-width="3"/>
+  <text x="200" y="128" text-anchor="middle" font-family="{{ font }}" font-size="22" font-weight="600" fill="{{ text_color }}" letter-spacing="2">{{ issuer | upper }}</text>
+  <text x="200" y="214" text-anchor="middle" font-family="{{ font }}" font-size="{{ title_size }}" font-weight="800" fill="{{ text_color }}">{{ label }}</text>
+  <rect x="96" y="246" width="208" height="40" rx="20" fill="{{ accent }}"/>
+  <text x="200" y="273" text-anchor="middle" font-family="{{ font }}" font-size="18" font-weight="700" fill="{{ accent_text }}" letter-spacing="1">{{ subtitle | upper }}</text>
+  {% if year %}<text x="200" y="322" text-anchor="middle" font-family="{{ font }}" font-size="18" fill="{{ text_color }}" fill-opacity="0.85">{{ year }}</text>{% endif %}
+</svg>

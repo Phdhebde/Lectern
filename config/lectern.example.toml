@@ -1,0 +1,89 @@
+# Lectern instance configuration.
+#
+# One instance = one brand. Everything shown to learners (name, colours, fonts, logo,
+# legal links, e-mail sender) comes from this file and from the branding directory.
+#
+# Any key can be overridden by an environment variable:
+#   LECTERN__<SECTION>__<KEY>=value      e.g. LECTERN__AUTH__OIDC__CLIENT_SECRET=...
+# Keep secrets (database password, OIDC client secret, SMTP credentials) in the
+# environment, never in this file.
+
+[instance]
+name = "Example Academy"
+product_name = "Example"
+product_major_version = "1"
+public_url = "http://localhost:8080"
+contact_email = "academy@example.com"
+legal_notice_url = "https://example.com/legal"
+privacy_policy_url = "https://example.com/privacy"
+documentation_url = "https://docs.example.com"
+logo = "logo.svg"
+favicon = "favicon.svg"
+default_locale = "fr"
+
+[theme.tokens]
+# Every colour used by the interface, e-mails, badges and certificates is a token.
+color-primary = "#2f5bea"
+color-primary-contrast = "#ffffff"
+color-accent = "#f59e0b"
+color-bg = "#f7f8fa"
+color-surface = "#ffffff"
+color-text = "#1b1f29"
+color-muted = "#5b6475"
+color-border = "#dde1e8"
+color-success = "#1a7f4b"
+color-danger = "#c62828"
+color-annotation = "#e5007d"
+radius = "10px"
+font-body = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+font-heading = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+
+# Fonts are always served by the instance itself, never by a third party.
+# [[theme.fonts]]
+# family = "Inter"
+# src = "fonts/Inter-Variable.woff2"
+# weight = "100 900"
+
+[server]
+bind = "0.0.0.0:8080"
+static_dir = "web/dist"
+data_dir = "data"
+branding_dir = "branding"
+# false only for local development on http://localhost (cookies stay Secure, which localhost accepts).
+secure_cookies = false
+# Origins serving videos (object storage / streaming server), added to the CSP.
+media_origins = []
+
+[database]
+# Usually provided by DATABASE_URL.
+url = "postgres://lectern:lectern@localhost/lectern"
+
+[auth]
+session_hours = 12
+email_login = true
+require_mfa_for = ["trainer", "admin"]
+
+# [auth.oidc]
+# label = "Company account"
+# issuer_url = "https://sso.example.com/realms/academy"
+# client_id = "lectern"
+# client_secret: LECTERN__AUTH__OIDC__CLIENT_SECRET
+# mfa_acr_values = ["gold"]
+# roles_claim = "lectern_roles"
+
+[mail]
+# from = "Example Academy <academy@example.com>"
+# smtp_url: LECTERN__MAIL__SMTP_URL (smtps://user:pass@host:465). Unset = e-mails are logged.
+
+[certificates]
+signatory_name = "Jane Doe"
+signatory_title = "Head of Academy"
+# font = "fonts/Certificate-Regular.ttf"
+# font_bold = "fonts/Certificate-Bold.ttf"
+# logo = "logo.png"
+# signature_image = "signature.png"
+
+[alerts]
+expiry_days = [90, 30, 7]
+recert_window_days = 90
+major_version_grace_days = 90

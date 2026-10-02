@@ -1,0 +1,9 @@
+# cargo-audit configuration. Every exception is justified and reviewed at each release.
+[advisories]
+ignore = [
+  # RUSTSEC-2023-0071 (rsa, "Marvin" timing side channel on private-key operations).
+  # rsa is only pulled by openidconnect to *verify* RS256 ID-token signatures with the
+  # provider's public key; Lectern never decrypts or signs with an RSA private key, so the
+  # vulnerable code path is not reachable. No fixed version exists upstream yet.
+  "RUSTSEC-2023-0071",
+]

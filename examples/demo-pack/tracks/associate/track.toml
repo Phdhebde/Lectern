@@ -1,0 +1,25 @@
+title = "Associate"
+summary = "Position, qualify and sell the product."
+description = "For partner sales teams."
+audiences = ["partner"]
+position = 2
+estimated_minutes = 180
+validity_months = 24
+
+[badge]
+label = "ASSOCIATE"
+subtitle = "Certified"
+color = "#1d4ed8"
+
+[exam]
+free_attempts = 2
+cooldown_days = 7
+bank_factor = 1
+
+[[exam.sections]]
+title = "Multiple-choice"
+kind = "questions"
+pool = "exam"
+question_count = 2
+duration_minutes = 40
+pass_percent = 75

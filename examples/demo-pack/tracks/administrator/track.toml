@@ -1,0 +1,21 @@
+title = "Administrator"
+summary = "Manage users, rights and resources day to day."
+audiences = ["customer"]
+position = 5
+estimated_minutes = 120
+
+[badge]
+label = "ADMIN"
+subtitle = "Trained"
+color = "#be123c"
+
+[exam]
+bank_factor = 1
+
+[[exam.sections]]
+title = "Multiple-choice"
+kind = "questions"
+pool = "exam"
+question_count = 1
+duration_minutes = 20
+pass_percent = 70

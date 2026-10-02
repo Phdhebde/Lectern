@@ -1,0 +1,11 @@
+[[questions]]
+ref = "asso-exam-1"
+pool = "exam"
+prompt = "Licences are counted by…"
+choices = [{ text = "Concurrent sessions", correct = true }, { text = "Number of servers" }]
+
+[[questions]]
+ref = "asso-exam-2"
+pool = "exam"
+prompt = "Which question helps size a deal?"
+choices = [{ text = "How many users connect at the same time?", correct = true }, { text = "What colour is the logo?" }]

@@ -1,0 +1,5 @@
+[[questions]]
+ref = "adm-exam-1"
+pool = "exam"
+prompt = "Rights are best granted to…"
+choices = [{ text = "Groups", correct = true }, { text = "Individual users" }]

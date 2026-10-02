@@ -1,0 +1,56 @@
+# cargo-deny: supply-chain policy, enforced in CI (`cargo deny check`).
+
+[graph]
+all-features = false
+
+[advisories]
+# Any vulnerability, unmaintained crate (direct or transitive), unsound crate or yanked
+# release fails the build. Exceptions must be justified here and reviewed at each release.
+unmaintained = "all"
+unsound = "all"
+yanked = "deny"
+ignore = [
+  # rsa "Marvin" timing side channel on private-key operations. rsa is only pulled by
+  # openidconnect to *verify* RS256 ID-token signatures with the provider's public key;
+  # no RSA private key is ever used, so the vulnerable path is unreachable. No fixed
+  # version exists upstream.
+  { id = "RUSTSEC-2023-0071", reason = "public-key verification only, see deny.toml" },
+]
+
+[licenses]
+# Permissive licenses only, compatible with distributing the platform under any license.
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Zlib",
+  "Unicode-3.0",
+  "CDLA-Permissive-2.0",
+  "BSL-1.0",
+  "0BSD",
+  # File-level copyleft only (cssparser, via the HTML sanitizer): fine for unmodified use.
+  "MPL-2.0",
+]
+confidence-threshold = 0.9
+
+[licenses.private]
+# The platform's own crates are not published to a registry.
+ignore = true
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+# Native TLS / OpenSSL stays out: everything uses rustls.
+deny = [
+  { name = "openssl" },
+  { name = "openssl-sys" },
+  { name = "native-tls" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

@@ -1,0 +1,59 @@
+# Traefik rate limiting (K3s default ingress controller).
+# - Whole site: generous limit against scraping and brute force.
+# - Sign-in endpoints: strict limit, complementing the per-address and instance-wide
+#   limits enforced by the application.
+# Traefik must see the real client IP (externalTrafficPolicy: Local on its Service, or
+# trusted forwarded headers from your load balancer), otherwise all clients share a bucket.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: lectern-ratelimit
+spec:
+  rateLimit:
+    average: 30
+    period: 1s
+    burst: 120
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: lectern-auth-ratelimit
+spec:
+  rateLimit:
+    average: 10
+    period: 1m
+    burst: 10
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: lectern-request-limits
+spec:
+  buffering:
+    # Matches server.max_upload_mb (50 MB) plus headroom; content packs are uploaded by admins.
+    maxRequestBodyBytes: 209715200
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lectern-auth
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.middlewares: academy-lectern-auth-ratelimit@kubernetescrd
+spec:
+  tls:
+    - hosts: [academy.example.com]
+      secretName: lectern-tls
+  rules:
+    - host: academy.example.com
+      http:
+        paths:
+          - path: /api/auth
+            pathType: Prefix
+            backend:
+              service: { name: lectern, port: { name: http } }
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service: { name: lectern, port: { name: http } }

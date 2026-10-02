@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="{{ instance.default_locale }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>{{ subject }}</title>
+</head>
+<body style="margin:0;padding:0;background:{{ theme['color-bg'] }};font-family:{{ theme['font-body'] }};color:{{ theme['color-text'] }};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{{ theme['color-bg'] }};padding:24px 0;">
+  <tr><td align="center">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:{{ theme['color-surface'] }};border:1px solid {{ theme['color-border'] }};border-radius:{{ theme['radius'] }};">
+      <tr><td style="padding:20px 28px;background:{{ theme['color-primary'] }};color:{{ theme['color-primary-contrast'] }};border-radius:{{ theme['radius'] }} {{ theme['radius'] }} 0 0;font-size:18px;font-weight:bold;">
+        {% if instance.logo %}<img src="{{ instance.public_url }}/branding/{{ instance.logo }}" alt="" height="28" style="vertical-align:middle;margin-right:10px;">{% endif %}{{ instance.name }}
+      </td></tr>
+      <tr><td style="padding:28px;font-size:15px;line-height:1.55;">
+        {{ body }}
+      </td></tr>
+      <tr><td style="padding:16px 28px;border-top:1px solid {{ theme['color-border'] }};font-size:12px;color:{{ theme['color-muted'] }};">
+        {{ instance.name }} · <a href="mailto:{{ instance.contact_email }}" style="color:{{ theme['color-muted'] }};">{{ instance.contact_email }}</a>
+        {% if instance.privacy_policy_url %} · <a href="{{ instance.privacy_policy_url }}" style="color:{{ theme['color-muted'] }};">{{ t('footer.privacy') }}</a>{% endif %}
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>

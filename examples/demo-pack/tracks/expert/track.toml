@@ -1,0 +1,26 @@
+title = "Expert"
+summary = "Design complex architectures and handle difficult cases."
+audiences = ["partner"]
+position = 4
+prerequisite = "engineer"
+prerequisites = "A valid Engineer certification and at least 6 months of field experience."
+estimated_minutes = 600
+validity_months = 24
+
+[badge]
+label = "EXPERT"
+subtitle = "Certified"
+color = "#111827"
+accent = "#f59e0b"
+
+[exam]
+free_attempts = 1
+cooldown_days = 30
+bank_factor = 1
+
+[[exam.sections]]
+title = "Complex case study"
+kind = "case_study"
+scenario_count = 1
+duration_minutes = 180
+pass_percent = 0

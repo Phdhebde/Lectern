@@ -1,0 +1,127 @@
+# Textes rendus par le serveur (e-mails, page de vérification, certificats, badges).
+# Chaque instance peut surcharger n'importe quelle clé dans <branding_dir>/locales/fr.toml.
+# Variables disponibles : instance.*, plus celles propres à chaque message.
+
+[email.login]
+subject = "Votre lien de connexion à {{ instance.name }}"
+body = """
+Bonjour,
+
+Pour vous connecter à {{ instance.name }}, utilisez le lien ci-dessous. Il est valable {{ minutes }} minutes et ne peut servir qu'une fois.
+
+[Se connecter]({{ link }})
+
+Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.
+"""
+
+[email.membership_requested]
+subject = "{{ learner }} demande à rejoindre {{ org }}"
+body = """
+Bonjour,
+
+{{ learner }} ({{ email }}) demande à être rattaché(e) à **{{ org }}** sur {{ instance.name }}.
+
+[Valider ou refuser la demande]({{ link }})
+"""
+
+[email.membership_decided]
+subject = "Votre rattachement à {{ org }}"
+body = """
+Bonjour {{ name }},
+
+{% if approved %}Votre rattachement à **{{ org }}** a été validé. Les parcours réservés à votre organisation sont maintenant accessibles.{% else %}Votre demande de rattachement à **{{ org }}** n'a pas été acceptée. Contactez le responsable formation de votre organisation pour en savoir plus.{% endif %}
+
+[Accéder à {{ instance.name }}]({{ link }})
+"""
+
+[email.exam_passed]
+subject = "Félicitations : certification {{ track }} obtenue"
+body = """
+Bonjour {{ name }},
+
+Vous avez réussi l'examen **{{ track }}**.{% if expires %} Votre certification est valable jusqu'au {{ expires }}.{% endif %}
+
+- [Télécharger votre certificat]({{ certificate_link }})
+- [Page publique de vérification]({{ verify_link }})
+
+Partagez votre badge sur votre profil professionnel depuis votre espace.
+"""
+
+[email.exam_failed]
+subject = "Résultat de votre examen {{ track }}"
+body = """
+Bonjour {{ name }},
+
+Vous n'avez pas atteint le seuil de réussite de l'examen **{{ track }}** cette fois-ci. Révisez les modules concernés puis repassez l'examen{% if retry_at %} à partir du {{ retry_at }}{% endif %}.
+
+[Revoir le parcours]({{ link }})
+"""
+
+[email.exam_review]
+subject = "Votre examen {{ track }} est en cours d'évaluation"
+body = """
+Bonjour {{ name }},
+
+Vos réponses à l'examen **{{ track }}** ont bien été enregistrées. Un évaluateur va les corriger ; vous recevrez le résultat par e-mail.
+"""
+
+[email.expiry_learner]
+subject = "Votre certification {{ track }} expire dans {{ days }} jours"
+body = """
+Bonjour {{ name }},
+
+Votre certification **{{ track }}** expire le {{ expires }}. La recertification est ouverte : passez-la dès maintenant pour conserver votre certification.
+
+[Passer la recertification]({{ link }})
+"""
+
+[email.expiry_manager]
+subject = "{{ learner }} : certification {{ track }} à renouveler sous {{ days }} jours"
+body = """
+Bonjour,
+
+La certification **{{ track }}** de {{ learner }} ({{ org }}) expire le {{ expires }}. Une certification expirée ne compte plus pour les exigences de votre organisation.
+
+[Voir le tableau de bord]({{ link }})
+"""
+
+[email.new_content]
+subject = "Nouveau contenu dans le parcours {{ track }}"
+body = """
+Bonjour {{ name }},
+
+{{ message }}
+
+[Voir le parcours]({{ link }})
+"""
+
+[verify]
+title = "Vérification de certification"
+valid = "Certification valide"
+expired = "Certification expirée"
+revoked = "Certification révoquée"
+superseded = "Certification renouvelée"
+private = "Le titulaire a choisi de ne pas rendre cette certification publique."
+not_found = "Aucune certification ne correspond à cet identifiant."
+holder = "Titulaire"
+track = "Certification"
+issued = "Date d'obtention"
+expires = "Date d'expiration"
+never = "Sans expiration"
+issuer = "Émetteur"
+identifier = "Identifiant"
+
+[certificate]
+title = "Certificat"
+intro = "Ce certificat atteste que"
+achievement = "a obtenu la certification"
+issued = "Délivré le"
+expires = "Valable jusqu'au"
+verify = "Vérifier ce certificat :"
+
+[date]
+format = "%d/%m/%Y"
+
+[footer]
+legal = "Mentions légales"
+privacy = "Confidentialité"

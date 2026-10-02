@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="{{ instance.default_locale }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ t("verify.title") }} · {{ instance.name }}</title>
+<meta name="robots" content="{% if cert and cert.public %}index{% else %}noindex{% endif %}">
+{% if cert and cert.public %}
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ cert.holder }} · {{ cert.track }}">
+<meta property="og:description" content="{{ t('verify.track') }} {{ cert.track }} · {{ instance.name }}">
+<meta property="og:image" content="{{ instance.public_url }}/verify/{{ cert.id }}/badge.png">
+<meta property="og:url" content="{{ instance.public_url }}/verify/{{ cert.id }}">
+<link rel="alternate" type="application/ld+json" href="{{ instance.public_url }}/ob/assertions/{{ cert.id }}">
+{% endif %}
+{% if instance.favicon %}<link rel="icon" href="/branding/{{ instance.favicon }}">{% endif %}
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/server.css">
+</head>
+<body>
+<header class="v-header">
+  <a href="/" class="v-brand">{% if instance.logo %}<img src="/branding/{{ instance.logo }}" alt="">{% endif %}<span>{{ instance.name }}</span></a>
+</header>
+<main class="v-main">
+  <h1>{{ t("verify.title") }}</h1>
+  {% if not cert %}
+    <p class="v-card">{{ t("verify.not_found") }}</p>
+  {% elif not cert.public %}
+    <p class="v-card">{{ t("verify.private") }}</p>
+  {% else %}
+  <section class="v-card">
+    <img class="v-badge" src="/verify/{{ cert.id }}/badge.svg" alt="{{ cert.track }}" width="160" height="160">
+    <div>
+      <p class="v-status v-status-{{ cert.status }}">{{ t("verify." ~ cert.status) }}</p>
+      <dl>
+        <dt>{{ t("verify.holder") }}</dt><dd>{{ cert.holder }}</dd>
+        <dt>{{ t("verify.track") }}</dt><dd>{{ cert.track }}</dd>
+        <dt>{{ t("verify.issued") }}</dt><dd>{{ cert.issued }}</dd>
+        <dt>{{ t("verify.expires") }}</dt><dd>{{ cert.expires or t("verify.never") }}</dd>
+        <dt>{{ t("verify.issuer") }}</dt><dd>{{ instance.name }}</dd>
+        <dt>{{ t("verify.identifier") }}</dt><dd><code>{{ cert.id }}</code></dd>
+      </dl>
+    </div>
+  </section>
+  {% endif %}
+</main>
+<footer class="v-footer">
+  {% if instance.legal_notice_url %}<a href="{{ instance.legal_notice_url }}">{{ t("footer.legal") }}</a>{% endif %}
+  {% if instance.privacy_policy_url %}<a href="{{ instance.privacy_policy_url }}">{{ t("footer.privacy") }}</a>{% endif %}
+</footer>
+</body>
+</html>

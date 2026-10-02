@@ -1,0 +1,47 @@
+title = "Engineer"
+summary = "Deploy, administer and provide first and second level support."
+description = """
+For partner technicians. Includes hands-on scenarios to reproduce on a demo tenant.
+"""
+audiences = ["partner"]
+position = 3
+prerequisites = "Linux and Windows administration basics, networking (flows, DNS, proxy), directory and OIDC notions."
+estimated_minutes = 720
+scenarios_required = true
+validity_months = 24
+
+[badge]
+label = "ENGINEER"
+subtitle = "Certified"
+color = "#7c3aed"
+
+[exam]
+free_attempts = 2
+cooldown_days = 14
+bank_factor = 3
+
+[[exam.sections]]
+title = "Multiple-choice"
+kind = "questions"
+pool = "exam"
+question_count = 3
+duration_minutes = 60
+pass_percent = 75
+
+[[exam.sections]]
+title = "Case study"
+kind = "case_study"
+scenario_count = 1
+duration_minutes = 90
+pass_percent = 75
+
+[recert_exam]
+bank_factor = 1
+
+[[recert_exam.sections]]
+title = "What's new"
+kind = "questions"
+pool = "recert"
+question_count = 2
+duration_minutes = 20
+pass_percent = 75

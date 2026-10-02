@@ -1,0 +1,29 @@
+[instance]
+name = "Example Academy"
+product_name = "Example"
+product_major_version = "1"
+public_url = "https://academy.example.com"
+contact_email = "academy@example.com"
+privacy_policy_url = "https://academy.example.com/privacy"
+logo = "logo.svg"
+favicon = "favicon.svg"
+default_locale = "fr"
+
+[theme.tokens]
+color-primary = "#2f5bea"
+color-accent = "#f59e0b"
+
+[server]
+secure_cookies = true
+media_origins = ["https://media.example.com"]
+
+[auth]
+email_login = true
+require_mfa_for = ["trainer", "admin"]
+
+[auth.oidc]
+label = "Company account"
+issuer_url = "https://sso.example.com/realms/academy"
+client_id = "lectern"
+mfa_acr_values = ["gold"]
+roles_claim = "resource_access.lectern.roles"
