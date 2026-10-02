@@ -42,12 +42,17 @@ fn manifest(p: &str) -> PathBuf {
 }
 
 async fn setup(db: PgPool) -> TestApp {
+    setup_with(db, false).await
+}
+
+async fn setup_with(db: PgPool, secure_cookies: bool) -> TestApp {
     let data = tempdir::TempDir::new();
     let raw = std::fs::read_to_string(manifest("../config/lectern.example.toml")).unwrap();
     let mut table: toml::Table = raw.parse().unwrap();
     table["server"]["data_dir"] = toml::Value::String(data.0.to_string_lossy().into());
     table["server"]["branding_dir"] = toml::Value::String(data.0.join("branding").to_string_lossy().into());
     table["auth"]["require_mfa_for"] = toml::Value::Array(vec![]);
+    table["server"]["secure_cookies"] = toml::Value::Boolean(secure_cookies);
     let config: Config = toml::Value::Table(table).try_into().unwrap();
     let state = state_with_pool(config, db).unwrap();
     let files = pack::PackFiles::from_dir(&manifest("../examples/demo-pack")).unwrap();
@@ -534,4 +539,20 @@ async fn expert_written_case_needs_manual_review(db: PgPool) {
     assert_eq!(r["status"], "passed");
     let certs = app.get("/api/me/certifications", &s).await;
     assert!(certs.as_array().unwrap().iter().any(|c| c["track_slug"] == "expert" && c["status"] == "valid"));
+}
+
+#[sqlx::test(migrator = "lectern_server::MIGRATOR")]
+async fn https_instances_use_host_prefixed_secure_cookie(db: PgPool) {
+    let app = setup_with(db, true).await;
+    let s = app.login("secure@example.com").await;
+    assert!(s.cookie.starts_with("__Host-lectern_session="), "{}", s.cookie);
+    // A cookie without the prefix (e.g. planted by a sibling sub-domain) is ignored.
+    let token = s.cookie.split_once('=').unwrap().1;
+    let planted = Session { cookie: format!("lectern_session={token}"), csrf: s.csrf.clone(), id: s.id.clone() };
+    let (st, _) = app.call(Method::GET, "/api/me", Some(&planted), None).await;
+    assert_eq!(st, StatusCode::UNAUTHORIZED);
+    // Security headers specific to HTTPS.
+    let res = app.router.clone().oneshot(Request::get("/api/instance").body(Body::empty()).unwrap()).await.unwrap();
+    assert!(res.headers()["strict-transport-security"].to_str().unwrap().contains("max-age"));
+    assert_eq!(res.headers()["cache-control"], "no-store");
 }

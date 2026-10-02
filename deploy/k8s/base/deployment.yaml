@@ -19,13 +19,14 @@ spec:
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
-        runAsUser: 10001
-        fsGroup: 10001
+        runAsUser: 65532
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: lectern
-          image: ghcr.io/example/lectern:latest # pinned by the overlay
+          image: ghcr.io/example/lectern:0.0.0 # replaced by the overlay (tag or digest)
           args: ["serve"]
           ports:
             - name: http

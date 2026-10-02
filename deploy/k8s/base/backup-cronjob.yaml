@@ -22,7 +22,9 @@ spec:
           securityContext:
             runAsNonRoot: true
             runAsUser: 999
-            fsGroup: 999
+            # Same group as the server so the assets volume is readable without re-labelling it.
+            fsGroup: 65532
+            fsGroupChangePolicy: OnRootMismatch
             seccompProfile:
               type: RuntimeDefault
           # The data volume is ReadWriteOnce: schedule next to the server pod.
@@ -35,7 +37,7 @@ spec:
                   topologyKey: kubernetes.io/hostname
           containers:
             - name: backup
-              image: postgres:16
+              image: postgres:16@sha256:1a6ab3f5345eb6dbe04a1349529caabdb0ab09293a09590fad07b2246bfa4b54
               envFrom:
                 - secretRef:
                     name: lectern-secrets
@@ -50,15 +52,23 @@ spec:
                   ls -lh /backups
               securityContext:
                 allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
                 capabilities:
                   drop: ["ALL"]
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 512Mi }
               volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
                 - name: data
                   mountPath: /data
                   readOnly: true
                 - name: backups
                   mountPath: /backups
           volumes:
+            - name: tmp
+              emptyDir: {}
             - name: data
               persistentVolumeClaim:
                 claimName: lectern-data

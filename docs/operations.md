@@ -2,8 +2,9 @@
 
 ## Container image
 
-`Dockerfile` builds a single image: the Rust server and the built front-end, running as
-an unprivileged user with a read-only root filesystem. Configuration comes from a mounted
+`Dockerfile` builds a single image: the Rust server and the built front-end, on a
+distroless base (no shell), running as the unprivileged user 65532 with a read-only root
+filesystem. Base images are pinned by digest. Configuration comes from a mounted
 file (`LECTERN_CONFIG`) and environment variables.
 
 ## Kubernetes (K3s, GitOps)

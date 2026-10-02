@@ -12,7 +12,7 @@ use krilla::geom::{PathBuilder, Point, Rect, Size, Transform};
 use krilla::image::Image;
 use krilla::page::PageSettings;
 use krilla::paint::{Fill, Stroke};
-use krilla::text::{Font, TextDirection};
+use krilla::text::{Font, GlyphId, KrillaGlyph};
 use krilla::{Data, Document};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -141,15 +141,33 @@ impl LoadedFont {
         Ok(Self { font, face_data: data })
     }
 
-    /// Advance width of `text` at `size` points (no kerning; good enough for centring).
+    /// Lays out `text` on one line: one glyph per character from the font's character
+    /// map, with its horizontal advance (no kerning or ligatures, which certificates
+    /// do not need). Advances are normalized to the em, as krilla expects.
+    fn layout(&self, text: &str) -> Vec<KrillaGlyph> {
+        use skrifa::MetadataProvider;
+        let Ok(face) = skrifa::FontRef::new(&self.face_data) else { return Vec::new() };
+        let (size, location) = (skrifa::instance::Size::unscaled(), skrifa::instance::LocationRef::default());
+        let upem = f32::from(face.metrics(size, location).units_per_em.max(1));
+        let charmap = face.charmap();
+        let metrics = face.glyph_metrics(size, location);
+        text.char_indices()
+            .map(|(i, c)| {
+                let gid = charmap.map(c).unwrap_or_default();
+                let advance = metrics.advance_width(gid).unwrap_or(upem / 2.0) / upem;
+                KrillaGlyph::new(GlyphId::new(gid.to_u32()), advance, 0.0, 0.0, 0.0, i..i + c.len_utf8(), None)
+            })
+            .collect()
+    }
+
+    /// Width of `text` at `size` points.
     fn width(&self, text: &str, size: f32) -> f32 {
-        let Ok(face) = ttf_parser::Face::parse(&self.face_data, 0) else { return 0.0 };
-        let upem = face.units_per_em() as f32;
-        text.chars()
-            .map(|c| face.glyph_index(c).and_then(|g| face.glyph_hor_advance(g)).unwrap_or(upem as u16 / 2) as f32)
-            .sum::<f32>()
-            * size
-            / upem
+        self.layout(text).iter().map(|g| g.x_advance).sum::<f32>() * size
+    }
+
+    fn draw(&self, s: &mut krilla::surface::Surface, at: Point, size: f32, text: &str) {
+        let glyphs = self.layout(text);
+        s.draw_glyphs(at, &glyphs, self.font.clone(), text, size, false);
     }
 }
 
@@ -215,14 +233,7 @@ pub fn certificate_pdf(state: &AppState, input: &CertificateInput) -> anyhow::Re
     s.set_fill(Some(fill(contrast)));
     let name = &state.config.instance.name;
     let size = 20.0;
-    s.draw_text(
-        Point::from_xy(w - 50.0 - bold.width(name, size), 72.0),
-        bold.font.clone(),
-        size,
-        name,
-        false,
-        TextDirection::Auto,
-    );
+    bold.draw(&mut s, Point::from_xy(w - 50.0 - bold.width(name, size), 72.0), size, name);
 
     let centered =
         |s: &mut krilla::surface::Surface, f: &LoadedFont, size: f32, y: f32, txt: &str, color: (u8, u8, u8)| {
@@ -231,14 +242,7 @@ pub fn certificate_pdf(state: &AppState, input: &CertificateInput) -> anyhow::Re
                 size -= 1.0;
             }
             s.set_fill(Some(fill(color)));
-            s.draw_text(
-                Point::from_xy((w - f.width(txt, size)) / 2.0, y),
-                f.font.clone(),
-                size,
-                txt,
-                false,
-                TextDirection::Auto,
-            );
+            f.draw(s, Point::from_xy((w - f.width(txt, size)) / 2.0, y), size, txt);
         };
 
     centered(&mut s, &bold, 40.0, 175.0, &r.raw("certificate.title").to_uppercase(), primary);
@@ -270,25 +274,18 @@ pub fn certificate_pdf(state: &AppState, input: &CertificateInput) -> anyhow::Re
     s.draw_path(&rect_path(sig_x, 495.0, 220.0, 0.8));
     if let Some(n) = &cfg.signatory_name {
         s.set_fill(Some(fill(text)));
-        s.draw_text(Point::from_xy(sig_x, 512.0), bold.font.clone(), 12.0, n, false, TextDirection::Auto);
+        bold.draw(&mut s, Point::from_xy(sig_x, 512.0), 12.0, n);
     }
     if let Some(t) = &cfg.signatory_title {
         s.set_fill(Some(fill(muted)));
-        s.draw_text(Point::from_xy(sig_x, 528.0), regular.font.clone(), 10.0, t, false, TextDirection::Auto);
+        regular.draw(&mut s, Point::from_xy(sig_x, 528.0), 10.0, t);
     }
 
     // Verification link
     let url = state.config.public_url(&format!("/verify/{}", input.id));
     s.set_fill(Some(fill(muted)));
-    s.draw_text(
-        Point::from_xy(50.0, 512.0),
-        regular.font.clone(),
-        10.0,
-        r.raw("certificate.verify"),
-        false,
-        TextDirection::Auto,
-    );
-    s.draw_text(Point::from_xy(50.0, 528.0), regular.font.clone(), 10.0, &url, false, TextDirection::Auto);
+    regular.draw(&mut s, Point::from_xy(50.0, 512.0), 10.0, r.raw("certificate.verify"));
+    regular.draw(&mut s, Point::from_xy(50.0, 528.0), 10.0, &url);
 
     s.finish();
     page.finish();

@@ -24,6 +24,14 @@ use crate::error::{AppError, AppResult};
 use crate::state::AppState;
 
 pub const SESSION_COOKIE: &str = "lectern_session";
+/// Over HTTPS the `__Host-` prefix makes browsers reject the cookie unless it is Secure,
+/// host-only (no Domain) and scoped to `/`, so a sibling sub-domain cannot plant or
+/// override a session (session fixation).
+pub const SECURE_SESSION_COOKIE: &str = "__Host-lectern_session";
+
+pub fn session_cookie_name(secure: bool) -> &'static str {
+    if secure { SECURE_SESSION_COOKIE } else { SESSION_COOKIE }
+}
 pub const CSRF_HEADER: &str = "x-csrf-token";
 
 /// 256-bit random token, URL-safe base64.
@@ -224,7 +232,10 @@ where
             return Ok(user.clone());
         }
         let jar = CookieJar::from_headers(&parts.headers);
-        let token = jar.get(SESSION_COOKIE).map(|c| c.value().to_string()).ok_or(AppError::Unauthorized)?;
+        let token = jar
+            .get(session_cookie_name(state.config.server.secure_cookies))
+            .map(|c| c.value().to_string())
+            .ok_or(AppError::Unauthorized)?;
         let user = load_user(&state.db, &hash_token(&token), &state.config.auth.require_mfa_for)
             .await?
             .ok_or(AppError::Unauthorized)?;
@@ -286,7 +297,7 @@ pub async fn create_session(state: &AppState, user_id: Uuid, method: &str, mfa: 
 }
 
 pub fn session_cookie(state: &AppState, value: String, hours: i64) -> Cookie<'static> {
-    Cookie::build((SESSION_COOKIE, value))
+    Cookie::build((session_cookie_name(state.config.server.secure_cookies), value))
         .http_only(true)
         .secure(state.config.server.secure_cookies)
         .same_site(SameSite::Lax)
