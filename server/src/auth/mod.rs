@@ -299,7 +299,8 @@ pub async fn create_session(state: &AppState, user_id: Uuid, method: &str, mfa: 
 pub fn session_cookie(state: &AppState, value: String, hours: i64) -> Cookie<'static> {
     Cookie::build((session_cookie_name(state.config.server.secure_cookies), value))
         .http_only(true)
-        .secure(state.config.server.secure_cookies)
+        // Always Secure: browsers still accept it on http://localhost for development.
+        .secure(true)
         .same_site(SameSite::Lax)
         .path("/")
         .max_age(time::Duration::hours(hours))

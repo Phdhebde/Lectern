@@ -42,10 +42,13 @@ pub async fn instance(State(state): State<AppState>) -> Json<Value> {
 
 /// Instance overrides of the front-end translations (`<branding>/locales/<lang>.json`).
 pub async fn translations(State(state): State<AppState>, Path(lang): Path<String>) -> AppResult<Response> {
-    if !lang.chars().all(|c| c.is_ascii_alphabetic() || c == '-') || lang.len() > 10 {
-        return Err(AppError::NotFound);
-    }
-    let path = state.config.server.branding_dir.join("locales").join(format!("{lang}.json"));
+    // Closed list: the file name never contains user input.
+    let file = match lang.as_str() {
+        "fr" => "fr.json",
+        "en" => "en.json",
+        _ => return Err(AppError::NotFound),
+    };
+    let path = state.config.server.branding_dir.join("locales").join(file);
     let body = match tokio::fs::read_to_string(&path).await {
         Ok(s) => s,
         Err(_) => "{}".to_string(),

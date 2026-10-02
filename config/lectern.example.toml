@@ -49,7 +49,7 @@ bind = "0.0.0.0:8080"
 static_dir = "web/dist"
 data_dir = "data"
 branding_dir = "branding"
-# Only for local HTTP development.
+# false only for local development on http://localhost (cookies stay Secure, which localhost accepts).
 secure_cookies = false
 # Origins serving videos (object storage / streaming server), added to the CSP.
 media_origins = []

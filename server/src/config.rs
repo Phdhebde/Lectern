@@ -99,7 +99,9 @@ pub struct ServerConfig {
     /// Logo, favicon, fonts, certificate artwork.
     #[serde(default = "default_branding_dir")]
     pub branding_dir: PathBuf,
-    /// Set the `Secure` flag on cookies. Only disable for local HTTP development.
+    /// The instance is served over HTTPS: enables HSTS and the `__Host-` session cookie
+    /// prefix. Only disable for local development on http://localhost (session cookies
+    /// are always `Secure`, which browsers accept on localhost).
     #[serde(default = "default_true")]
     pub secure_cookies: bool,
     /// Extra origins allowed to serve media (video CDN / object storage), for the CSP.

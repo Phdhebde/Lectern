@@ -31,7 +31,7 @@ possible), e.g. `LECTERN__AUTH__SESSION_HOURS=8`. `DATABASE_URL` sets `database.
 | `theme.fonts` | `family`, `src`, `weight`, `style` | Self-hosted web fonts |
 | `server` | `bind` | Listen address (default `0.0.0.0:8080`) |
 | | `static_dir`, `data_dir`, `branding_dir` | Built front-end, uploaded assets, branding files |
-| | `secure_cookies` | `true` in production (HTTPS); also enables HSTS |
+| | `secure_cookies` | `true` in production (HTTPS): HSTS and `__Host-` session cookie. Session cookies are always `Secure`; for development use `http://localhost` |
 | | `media_origins` | Origins serving videos, added to the CSP |
 | | `max_upload_mb` | Upload limit (default 50) |
 | `auth` | `email_login` | Passwordless e-mail sign-in |
