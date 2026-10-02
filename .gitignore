@@ -27,3 +27,4 @@ node_modules/
 web/dist/
 *.local.toml
 .env
+*.tsbuildinfo

@@ -31,16 +31,14 @@ pub async fn queue_template<'e>(
     ctx: Value,
 ) -> AppResult<()> {
     let (subject, html, text) = state.renderer.email(kind, &ctx)?;
-    sqlx::query(
-        "INSERT INTO email_outbox (id, to_address, subject, html_body, text_body) VALUES ($1, $2, $3, $4, $5)",
-    )
-    .bind(Uuid::new_v4())
-    .bind(to)
-    .bind(subject)
-    .bind(html)
-    .bind(text)
-    .execute(db)
-    .await?;
+    sqlx::query("INSERT INTO email_outbox (id, to_address, subject, html_body, text_body) VALUES ($1, $2, $3, $4, $5)")
+        .bind(Uuid::new_v4())
+        .bind(to)
+        .bind(subject)
+        .bind(html)
+        .bind(text)
+        .execute(db)
+        .await?;
     Ok(())
 }
 

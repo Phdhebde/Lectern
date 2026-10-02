@@ -1,0 +1,67 @@
+# Daily backup of the database and uploaded assets, kept 14 days on a dedicated volume.
+# Ship the backup volume off-site (e.g. with your existing backup tooling / object storage).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: lectern-backup
+spec:
+  schedule: "17 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/component: backup
+        spec:
+          restartPolicy: OnFailure
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            fsGroup: 999
+            seccompProfile:
+              type: RuntimeDefault
+          # The data volume is ReadWriteOnce: schedule next to the server pod.
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/component: server
+                  topologyKey: kubernetes.io/hostname
+          containers:
+            - name: backup
+              image: postgres:16
+              envFrom:
+                - secretRef:
+                    name: lectern-secrets
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  stamp=$(date +%Y%m%d-%H%M%S)
+                  pg_dump --format=custom --no-owner "$DATABASE_URL" > /backups/db-$stamp.dump
+                  tar -C /data -czf /backups/assets-$stamp.tar.gz assets
+                  find /backups -type f -mtime +14 -delete
+                  ls -lh /backups
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                  readOnly: true
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: lectern-data
+            - name: backups
+              persistentVolumeClaim:
+                claimName: lectern-backups

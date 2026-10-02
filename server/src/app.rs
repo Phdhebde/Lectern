@@ -90,7 +90,8 @@ pub fn router(state: AppState) -> Router {
 
     let static_dir = state.config.server.static_dir.clone();
     let index = static_dir.join("index.html");
-    let spa = ServeDir::new(&static_dir).not_found_service(ServeFile::new(index));
+    // Client-side routes are served index.html with a 200 status.
+    let spa = ServeDir::new(&static_dir).fallback(ServeFile::new(index));
 
     Router::new()
         .nest("/api", api)

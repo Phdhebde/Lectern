@@ -395,25 +395,34 @@ pub fn parse(files: &PackFiles) -> anyhow::Result<ParsedPack> {
         }
 
         let mut modules = Vec::new();
-        let mut module_files: Vec<&str> = files
-            .list(&format!("{base}/modules/"))
-            .into_iter()
-            .filter(|p| p.ends_with(".md"))
-            .collect();
+        let mut module_files: Vec<&str> =
+            files.list(&format!("{base}/modules/")).into_iter().filter(|p| p.ends_with(".md")).collect();
         module_files.sort();
         for (i, path) in module_files.iter().enumerate() {
             let stem = path.rsplit('/').next().unwrap_or_default().trim_end_matches(".md");
             // "01-architecture" -> "architecture"
-            let slug = stem.split_once('-').filter(|(n, _)| n.chars().all(|c| c.is_ascii_digit())).map(|(_, s)| s).unwrap_or(stem);
+            let slug = stem
+                .split_once('-')
+                .filter(|(n, _)| n.chars().all(|c| c.is_ascii_digit()))
+                .map(|(_, s)| s)
+                .unwrap_or(stem);
             if !is_slug(slug) {
                 bail!("{path}: invalid module slug {slug:?}");
             }
             let (front, body) = split_front_matter(files.text(path)?).with_context(|| path.to_string())?;
             let front: ModuleFrontMatter = toml::from_str(front).with_context(|| format!("{path}: front matter"))?;
             for a in &front.attachments {
-                files.files.get(&format!("{base}/{}", a.file)).with_context(|| format!("{path}: missing attachment {}", a.file))?;
+                files
+                    .files
+                    .get(&format!("{base}/{}", a.file))
+                    .with_context(|| format!("{path}: missing attachment {}", a.file))?;
             }
-            modules.push(ParsedModule { slug: slug.to_string(), position: i as i32 + 1, front, body: body.trim().to_string() });
+            modules.push(ParsedModule {
+                slug: slug.to_string(),
+                position: i as i32 + 1,
+                front,
+                body: body.trim().to_string(),
+            });
         }
 
         let mut scenarios = Vec::new();
@@ -431,7 +440,10 @@ pub fn parse(files: &PackFiles) -> anyhow::Result<ParsedPack> {
             let dir = format!("{base}/scenarios/{sslug}");
             for (i, step) in file.steps.iter().enumerate() {
                 if let Some(img) = &step.image {
-                    files.files.get(&format!("{dir}/{img}")).with_context(|| format!("{path}: step {}: missing image {img}", i + 1))?;
+                    files
+                        .files
+                        .get(&format!("{dir}/{img}"))
+                        .with_context(|| format!("{path}: step {}: missing image {img}", i + 1))?;
                 }
                 for a in &step.annotations {
                     a.validate().with_context(|| format!("{path}: step {}", i + 1))?;
@@ -457,7 +469,8 @@ pub fn parse(files: &PackFiles) -> anyhow::Result<ParsedPack> {
         let module_slugs: Vec<&str> = modules.iter().map(|m| m.slug.as_str()).collect();
         let scenario_slugs: Vec<&str> = scenarios.iter().map(|s| s.slug.as_str()).collect();
         for q in &mut questions {
-            validate_question(q, &module_slugs, &scenario_slugs).with_context(|| format!("{base}: question {}", q.reference))?;
+            validate_question(q, &module_slugs, &scenario_slugs)
+                .with_context(|| format!("{base}: question {}", q.reference))?;
         }
         tracks.push(ParsedTrack { slug, track, modules, scenarios, questions });
     }
@@ -760,11 +773,8 @@ pub async fn import(db: &PgPool, data_dir: &Path, files: &PackFiles) -> anyhow::
         // Questions
         let mut refs = Vec::new();
         for q in &t.questions {
-            let choices: Vec<serde_json::Value> = q
-                .choices
-                .iter()
-                .map(|c| json!({ "id": c.id, "text": c.text, "correct": c.correct }))
-                .collect();
+            let choices: Vec<serde_json::Value> =
+                q.choices.iter().map(|c| json!({ "id": c.id, "text": c.text, "correct": c.correct })).collect();
             sqlx::query(
                 "INSERT INTO questions (id, ref, track_id, pool, module_id, scenario_id, format, prompt_md, choices,
                     explanation_md, active, updated_at)
@@ -827,10 +837,11 @@ struct TrackRow {
 #[allow(clippy::type_complexity)]
 pub async fn export(db: &PgPool, data_dir: &Path) -> anyhow::Result<Vec<u8>> {
     let mut out: BTreeMap<String, Vec<u8>> = BTreeMap::new();
-    let levels: Vec<(String, String, String, i32, serde_json::Value)> =
-        sqlx::query_as("SELECT slug, org_kind, name, rank, requirements FROM requirement_levels ORDER BY org_kind, rank")
-            .fetch_all(db)
-            .await?;
+    let levels: Vec<(String, String, String, i32, serde_json::Value)> = sqlx::query_as(
+        "SELECT slug, org_kind, name, rank, requirements FROM requirement_levels ORDER BY org_kind, rank",
+    )
+    .fetch_all(db)
+    .await?;
     let manifest = PackManifest {
         format: FORMAT_VERSION,
         name: "export".into(),
@@ -869,14 +880,24 @@ pub async fn export(db: &PgPool, data_dir: &Path) -> anyhow::Result<Vec<u8>> {
         };
         out.insert(format!("{base}/track.toml"), toml::to_string_pretty(&tf)?.into_bytes());
 
-        let modules: Vec<(Uuid, String, i32, String, Option<String>, Option<String>, i32, String, serde_json::Value, Option<String>)> =
-            sqlx::query_as(
-                "SELECT id, slug, position, title, video_url, captions_url, duration_minutes, body_md, attachments, doc_url
+        let modules: Vec<(
+            Uuid,
+            String,
+            i32,
+            String,
+            Option<String>,
+            Option<String>,
+            i32,
+            String,
+            serde_json::Value,
+            Option<String>,
+        )> = sqlx::query_as(
+            "SELECT id, slug, position, title, video_url, captions_url, duration_minutes, body_md, attachments, doc_url
                  FROM modules WHERE track_id = $1 ORDER BY position",
-            )
-            .bind(t.id)
-            .fetch_all(db)
-            .await?;
+        )
+        .bind(t.id)
+        .fetch_all(db)
+        .await?;
         let mut module_slugs = HashMap::new();
         for (id, slug, position, title, video, captions, duration, body, attachments, doc_url) in modules {
             let mut atts = Vec::new();
@@ -887,7 +908,8 @@ pub async fn export(db: &PgPool, data_dir: &Path) -> anyhow::Result<Vec<u8>> {
                 out.insert(format!("{base}/{file}"), read_asset(asset_id).await?);
                 atts.push(AttachmentFile { file, label: a["label"].as_str().unwrap_or_default().to_string() });
             }
-            let front = ModuleFrontMatter { title, video, captions, duration_minutes: duration, doc_url, attachments: atts };
+            let front =
+                ModuleFrontMatter { title, video, captions, duration_minutes: duration, doc_url, attachments: atts };
             let content = format!("+++\n{}+++\n\n{}\n", toml::to_string_pretty(&front)?, body);
             out.insert(format!("{base}/modules/{position:02}-{slug}.md"), content.into_bytes());
             module_slugs.insert(id, slug);
@@ -948,14 +970,23 @@ pub async fn export(db: &PgPool, data_dir: &Path) -> anyhow::Result<Vec<u8>> {
             out.insert(format!("{dir}/scenario.toml"), toml::to_string_pretty(&sf)?.into_bytes());
         }
 
-        let questions: Vec<(String, String, Option<Uuid>, Option<Uuid>, String, String, serde_json::Value, String, bool)> =
-            sqlx::query_as(
-                "SELECT ref, pool, module_id, scenario_id, format, prompt_md, choices, explanation_md, active
+        let questions: Vec<(
+            String,
+            String,
+            Option<Uuid>,
+            Option<Uuid>,
+            String,
+            String,
+            serde_json::Value,
+            String,
+            bool,
+        )> = sqlx::query_as(
+            "SELECT ref, pool, module_id, scenario_id, format, prompt_md, choices, explanation_md, active
                  FROM questions WHERE track_id = $1 ORDER BY pool, ref",
-            )
-            .bind(t.id)
-            .fetch_all(db)
-            .await?;
+        )
+        .bind(t.id)
+        .fetch_all(db)
+        .await?;
         let mut by_pool: BTreeMap<String, Vec<QuestionFile>> = BTreeMap::new();
         for (reference, pool, module, scenario, format, prompt, choices, explanation, active) in questions {
             let choices: Vec<ChoiceFile> = choices
@@ -1042,7 +1073,16 @@ mod tests {
 
     #[test]
     fn annotations_are_bounded() {
-        let a = Annotation { kind: "box".into(), x: 10.0, y: 10.0, w: Some(20.0), h: Some(5.0), x2: None, y2: None, label: None };
+        let a = Annotation {
+            kind: "box".into(),
+            x: 10.0,
+            y: 10.0,
+            w: Some(20.0),
+            h: Some(5.0),
+            x2: None,
+            y2: None,
+            label: None,
+        };
         a.validate().unwrap();
         let bad = Annotation { x: 120.0, ..a.clone() };
         assert!(bad.validate().is_err());

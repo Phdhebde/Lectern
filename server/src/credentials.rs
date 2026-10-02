@@ -146,11 +146,7 @@ impl LoadedFont {
         let Ok(face) = ttf_parser::Face::parse(&self.face_data, 0) else { return 0.0 };
         let upem = face.units_per_em() as f32;
         text.chars()
-            .map(|c| {
-                face.glyph_index(c)
-                    .and_then(|g| face.glyph_hor_advance(g))
-                    .unwrap_or(upem as u16 / 2) as f32
-            })
+            .map(|c| face.glyph_index(c).and_then(|g| face.glyph_hor_advance(g)).unwrap_or(upem as u16 / 2) as f32)
             .sum::<f32>()
             * size
             / upem
@@ -179,9 +175,17 @@ pub fn certificate_pdf(state: &AppState, input: &CertificateInput) -> anyhow::Re
 
     // Frame
     s.set_fill(None);
-    s.set_stroke(Some(Stroke { paint: rgb::Color::new(primary.0, primary.1, primary.2).into(), width: 6.0, ..Default::default() }));
+    s.set_stroke(Some(Stroke {
+        paint: rgb::Color::new(primary.0, primary.1, primary.2).into(),
+        width: 6.0,
+        ..Default::default()
+    }));
     s.draw_path(&rect_path(18.0, 18.0, w - 36.0, h - 36.0));
-    s.set_stroke(Some(Stroke { paint: rgb::Color::new(accent.0, accent.1, accent.2).into(), width: 1.5, ..Default::default() }));
+    s.set_stroke(Some(Stroke {
+        paint: rgb::Color::new(accent.0, accent.1, accent.2).into(),
+        width: 1.5,
+        ..Default::default()
+    }));
     s.draw_path(&rect_path(30.0, 30.0, w - 60.0, h - 60.0));
     s.set_stroke(None);
 
@@ -211,16 +215,31 @@ pub fn certificate_pdf(state: &AppState, input: &CertificateInput) -> anyhow::Re
     s.set_fill(Some(fill(contrast)));
     let name = &state.config.instance.name;
     let size = 20.0;
-    s.draw_text(Point::from_xy(w - 50.0 - bold.width(name, size), 72.0), bold.font.clone(), size, name, false, TextDirection::Auto);
+    s.draw_text(
+        Point::from_xy(w - 50.0 - bold.width(name, size), 72.0),
+        bold.font.clone(),
+        size,
+        name,
+        false,
+        TextDirection::Auto,
+    );
 
-    let centered = |s: &mut krilla::surface::Surface, f: &LoadedFont, size: f32, y: f32, txt: &str, color: (u8, u8, u8)| {
-        let mut size = size;
-        while f.width(txt, size) > w - 120.0 && size > 8.0 {
-            size -= 1.0;
-        }
-        s.set_fill(Some(fill(color)));
-        s.draw_text(Point::from_xy((w - f.width(txt, size)) / 2.0, y), f.font.clone(), size, txt, false, TextDirection::Auto);
-    };
+    let centered =
+        |s: &mut krilla::surface::Surface, f: &LoadedFont, size: f32, y: f32, txt: &str, color: (u8, u8, u8)| {
+            let mut size = size;
+            while f.width(txt, size) > w - 120.0 && size > 8.0 {
+                size -= 1.0;
+            }
+            s.set_fill(Some(fill(color)));
+            s.draw_text(
+                Point::from_xy((w - f.width(txt, size)) / 2.0, y),
+                f.font.clone(),
+                size,
+                txt,
+                false,
+                TextDirection::Auto,
+            );
+        };
 
     centered(&mut s, &bold, 40.0, 175.0, &r.raw("certificate.title").to_uppercase(), primary);
     centered(&mut s, &regular, 16.0, 225.0, r.raw("certificate.intro"), muted);
@@ -261,7 +280,14 @@ pub fn certificate_pdf(state: &AppState, input: &CertificateInput) -> anyhow::Re
     // Verification link
     let url = state.config.public_url(&format!("/verify/{}", input.id));
     s.set_fill(Some(fill(muted)));
-    s.draw_text(Point::from_xy(50.0, 512.0), regular.font.clone(), 10.0, r.raw("certificate.verify"), false, TextDirection::Auto);
+    s.draw_text(
+        Point::from_xy(50.0, 512.0),
+        regular.font.clone(),
+        10.0,
+        r.raw("certificate.verify"),
+        false,
+        TextDirection::Auto,
+    );
     s.draw_text(Point::from_xy(50.0, 528.0), regular.font.clone(), 10.0, &url, false, TextDirection::Auto);
 
     s.finish();

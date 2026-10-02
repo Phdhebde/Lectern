@@ -46,7 +46,11 @@ pub struct OrgReq {
     level_slug: Option<String>,
 }
 
-pub async fn create_org(State(state): State<AppState>, user: CurrentUser, Json(r): Json<OrgReq>) -> AppResult<Json<Value>> {
+pub async fn create_org(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Json(r): Json<OrgReq>,
+) -> AppResult<Json<Value>> {
     admin(&user)?;
     if r.name.trim().is_empty() || !matches!(r.kind.as_str(), "partner" | "customer") {
         return Err(AppError::bad_request("invalid_org", "name required; kind is partner or customer"));
@@ -60,11 +64,17 @@ pub async fn create_org(State(state): State<AppState>, user: CurrentUser, Json(r
         .bind(new_join_code())
         .execute(&state.db)
         .await?;
-    audit::log(&state.db, Some(user.id), "org.create", Some(id.to_string()), json!({ "name": r.name, "kind": r.kind })).await?;
+    audit::log(&state.db, Some(user.id), "org.create", Some(id.to_string()), json!({ "name": r.name, "kind": r.kind }))
+        .await?;
     Ok(Json(json!({ "id": id })))
 }
 
-pub async fn update_org(State(state): State<AppState>, user: CurrentUser, Path(id): Path<Uuid>, Json(r): Json<OrgReq>) -> AppResult<Json<Value>> {
+pub async fn update_org(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(id): Path<Uuid>,
+    Json(r): Json<OrgReq>,
+) -> AppResult<Json<Value>> {
     admin(&user)?;
     if r.name.trim().is_empty() || !matches!(r.kind.as_str(), "partner" | "customer") {
         return Err(AppError::bad_request("invalid_org", "name required; kind is partner or customer"));
@@ -79,11 +89,22 @@ pub async fn update_org(State(state): State<AppState>, user: CurrentUser, Path(i
     if res.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
-    audit::log(&state.db, Some(user.id), "org.update", Some(id.to_string()), json!({ "name": r.name, "kind": r.kind, "level": r.level_slug })).await?;
+    audit::log(
+        &state.db,
+        Some(user.id),
+        "org.update",
+        Some(id.to_string()),
+        json!({ "name": r.name, "kind": r.kind, "level": r.level_slug }),
+    )
+    .await?;
     Ok(Json(json!({ "ok": true })))
 }
 
-pub async fn delete_org(State(state): State<AppState>, user: CurrentUser, Path(id): Path<Uuid>) -> AppResult<Json<Value>> {
+pub async fn delete_org(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(id): Path<Uuid>,
+) -> AppResult<Json<Value>> {
     admin(&user)?;
     sqlx::query("DELETE FROM organizations WHERE id = $1").bind(id).execute(&state.db).await?;
     audit::log(&state.db, Some(user.id), "org.delete", Some(id.to_string()), json!({})).await?;
@@ -98,7 +119,12 @@ pub struct ManagerReq {
 }
 
 /// Attaches a user (created if needed) to the organization as an approved training manager.
-pub async fn add_manager(State(state): State<AppState>, user: CurrentUser, Path(org): Path<Uuid>, Json(r): Json<ManagerReq>) -> AppResult<Json<Value>> {
+pub async fn add_manager(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(org): Path<Uuid>,
+    Json(r): Json<ManagerReq>,
+) -> AppResult<Json<Value>> {
     admin(&user)?;
     if !auth::email::is_plausible_email(&r.email) {
         return Err(AppError::bad_request("invalid_email", "invalid e-mail address"));
@@ -123,7 +149,11 @@ pub struct UserQuery {
     q: String,
 }
 
-pub async fn list_users(State(state): State<AppState>, user: CurrentUser, Query(q): Query<UserQuery>) -> AppResult<Json<Value>> {
+pub async fn list_users(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Query(q): Query<UserQuery>,
+) -> AppResult<Json<Value>> {
     admin(&user)?;
     let pattern = format!("%{}%", q.q.trim().replace(['%', '_'], ""));
     let rows: Option<Value> = sqlx::query_scalar(
@@ -147,7 +177,12 @@ pub struct RoleReq {
     grant: bool,
 }
 
-pub async fn set_role(State(state): State<AppState>, user: CurrentUser, Path(id): Path<Uuid>, Json(r): Json<RoleReq>) -> AppResult<Json<Value>> {
+pub async fn set_role(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(id): Path<Uuid>,
+    Json(r): Json<RoleReq>,
+) -> AppResult<Json<Value>> {
     admin(&user)?;
     let role = Role::parse(&r.role).ok_or_else(|| AppError::bad_request("invalid_role", "unknown role"))?;
     if id == user.id && role == Role::Admin && !r.grant {
@@ -160,9 +195,20 @@ pub async fn set_role(State(state): State<AppState>, user: CurrentUser, Path(id)
             .execute(&state.db)
             .await?;
     } else {
-        sqlx::query("DELETE FROM user_roles WHERE user_id = $1 AND role = $2").bind(id).bind(role.as_str()).execute(&state.db).await?;
+        sqlx::query("DELETE FROM user_roles WHERE user_id = $1 AND role = $2")
+            .bind(id)
+            .bind(role.as_str())
+            .execute(&state.db)
+            .await?;
     }
-    audit::log(&state.db, Some(user.id), "user.role", Some(id.to_string()), json!({ "role": r.role, "grant": r.grant })).await?;
+    audit::log(
+        &state.db,
+        Some(user.id),
+        "user.role",
+        Some(id.to_string()),
+        json!({ "role": r.role, "grant": r.grant }),
+    )
+    .await?;
     Ok(Json(json!({ "ok": true })))
 }
 
@@ -174,17 +220,31 @@ pub struct CreditReq {
 }
 
 /// Grants an extra exam attempt (until online payment is enabled).
-pub async fn grant_credit(State(state): State<AppState>, user: CurrentUser, Path(id): Path<Uuid>, Json(r): Json<CreditReq>) -> AppResult<Json<Value>> {
+pub async fn grant_credit(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(id): Path<Uuid>,
+    Json(r): Json<CreditReq>,
+) -> AppResult<Json<Value>> {
     admin(&user)?;
     let track = catalog::load_track(&state.db, &r.track_slug).await?;
-    sqlx::query("INSERT INTO attempt_credits (id, user_id, track_id, source, reference) VALUES ($1, $2, $3, 'grant', $4)")
-        .bind(Uuid::new_v4())
-        .bind(id)
-        .bind(track.id)
-        .bind(&r.reference)
-        .execute(&state.db)
-        .await?;
-    audit::log(&state.db, Some(user.id), "credit.grant", Some(id.to_string()), json!({ "track": r.track_slug, "reference": r.reference })).await?;
+    sqlx::query(
+        "INSERT INTO attempt_credits (id, user_id, track_id, source, reference) VALUES ($1, $2, $3, 'grant', $4)",
+    )
+    .bind(Uuid::new_v4())
+    .bind(id)
+    .bind(track.id)
+    .bind(&r.reference)
+    .execute(&state.db)
+    .await?;
+    audit::log(
+        &state.db,
+        Some(user.id),
+        "credit.grant",
+        Some(id.to_string()),
+        json!({ "track": r.track_slug, "reference": r.reference }),
+    )
+    .await?;
     Ok(Json(json!({ "ok": true })))
 }
 
@@ -193,13 +253,20 @@ pub struct RevokeReq {
     reason: String,
 }
 
-pub async fn revoke_cert(State(state): State<AppState>, user: CurrentUser, Path(id): Path<Uuid>, Json(r): Json<RevokeReq>) -> AppResult<Json<Value>> {
+pub async fn revoke_cert(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(id): Path<Uuid>,
+    Json(r): Json<RevokeReq>,
+) -> AppResult<Json<Value>> {
     admin(&user)?;
-    sqlx::query("UPDATE certifications SET revoked_at = now(), revoke_reason = $2 WHERE id = $1 AND revoked_at IS NULL")
-        .bind(id)
-        .bind(&r.reason)
-        .execute(&state.db)
-        .await?;
+    sqlx::query(
+        "UPDATE certifications SET revoked_at = now(), revoke_reason = $2 WHERE id = $1 AND revoked_at IS NULL",
+    )
+    .bind(id)
+    .bind(&r.reason)
+    .execute(&state.db)
+    .await?;
     audit::log(&state.db, Some(user.id), "cert.revoke", Some(id.to_string()), json!({ "reason": r.reason })).await?;
     Ok(Json(json!({ "ok": true })))
 }
@@ -211,7 +278,11 @@ pub struct VersionReq {
 
 /// Declares a new major product version: certifications obtained on older versions
 /// expire at the latest after the configured grace period.
-pub async fn declare_major_version(State(state): State<AppState>, user: CurrentUser, Json(r): Json<VersionReq>) -> AppResult<Json<Value>> {
+pub async fn declare_major_version(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Json(r): Json<VersionReq>,
+) -> AppResult<Json<Value>> {
     admin(&user)?;
     let version = r.version.trim();
     if version.is_empty() {
@@ -232,7 +303,14 @@ pub async fn declare_major_version(State(state): State<AppState>, user: CurrentU
         .bind(json!(version))
         .execute(&state.db)
         .await?;
-    audit::log(&state.db, Some(user.id), "product.major_version", None, json!({ "version": version, "affected": res.rows_affected() })).await?;
+    audit::log(
+        &state.db,
+        Some(user.id),
+        "product.major_version",
+        None,
+        json!({ "version": version, "affected": res.rows_affected() }),
+    )
+    .await?;
     Ok(Json(json!({ "affected_certifications": res.rows_affected(), "expires_at_latest": deadline,
         "note": "set instance.product_major_version to the new version so new certifications record it" })))
 }
@@ -256,7 +334,11 @@ pub struct TokenReq {
     name: String,
 }
 
-pub async fn create_token(State(state): State<AppState>, user: CurrentUser, Json(r): Json<TokenReq>) -> AppResult<Json<Value>> {
+pub async fn create_token(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Json(r): Json<TokenReq>,
+) -> AppResult<Json<Value>> {
     admin(&user)?;
     let token = format!("lct_{}", auth::random_token());
     let id = Uuid::new_v4();
@@ -272,7 +354,11 @@ pub async fn create_token(State(state): State<AppState>, user: CurrentUser, Json
     Ok(Json(json!({ "id": id, "token": token })))
 }
 
-pub async fn revoke_token(State(state): State<AppState>, user: CurrentUser, Path(id): Path<Uuid>) -> AppResult<Json<Value>> {
+pub async fn revoke_token(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(id): Path<Uuid>,
+) -> AppResult<Json<Value>> {
     admin(&user)?;
     sqlx::query("UPDATE api_tokens SET revoked_at = now() WHERE id = $1").bind(id).execute(&state.db).await?;
     audit::log(&state.db, Some(user.id), "api_token.revoke", Some(id.to_string()), json!({})).await?;
@@ -343,7 +429,14 @@ pub async fn import_pack(State(state): State<AppState>, user: CurrentUser, body:
     let report = pack::import(&state.db, &state.config.server.data_dir, &files)
         .await
         .map_err(|e| bad("invalid_pack", format!("{e:#}")))?;
-    audit::log(&state.db, Some(user.id), "pack.import", None, serde_json::to_value(&report).map_err(anyhow::Error::from)?).await?;
+    audit::log(
+        &state.db,
+        Some(user.id),
+        "pack.import",
+        None,
+        serde_json::to_value(&report).map_err(anyhow::Error::from)?,
+    )
+    .await?;
     Ok(Json(json!(report)))
 }
 
@@ -352,7 +445,10 @@ pub async fn export_pack(State(state): State<AppState>, user: CurrentUser) -> Ap
     let zip = pack::export(&state.db, &state.config.server.data_dir).await?;
     audit::log(&state.db, Some(user.id), "pack.export", None, json!({})).await?;
     Ok((
-        [(header::CONTENT_TYPE, "application/zip"), (header::CONTENT_DISPOSITION, "attachment; filename=\"content-pack.zip\"")],
+        [
+            (header::CONTENT_TYPE, "application/zip"),
+            (header::CONTENT_DISPOSITION, "attachment; filename=\"content-pack.zip\""),
+        ],
         zip,
     )
         .into_response())
@@ -368,13 +464,19 @@ pub struct LevelReq {
 
 pub async fn list_levels(State(state): State<AppState>, user: CurrentUser) -> AppResult<Json<Value>> {
     user.require_any(&[Role::Admin, Role::ChannelManager])?;
-    let rows: Option<Value> = sqlx::query_scalar("SELECT jsonb_agg(to_jsonb(l) ORDER BY l.org_kind, l.rank) FROM requirement_levels l")
-        .fetch_one(&state.db)
-        .await?;
+    let rows: Option<Value> =
+        sqlx::query_scalar("SELECT jsonb_agg(to_jsonb(l) ORDER BY l.org_kind, l.rank) FROM requirement_levels l")
+            .fetch_one(&state.db)
+            .await?;
     Ok(Json(rows.unwrap_or(json!([]))))
 }
 
-pub async fn put_level(State(state): State<AppState>, user: CurrentUser, Path(slug): Path<String>, Json(r): Json<LevelReq>) -> AppResult<Json<Value>> {
+pub async fn put_level(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(slug): Path<String>,
+    Json(r): Json<LevelReq>,
+) -> AppResult<Json<Value>> {
     admin(&user)?;
     if !is_slug(&slug) || !matches!(r.org_kind.as_str(), "partner" | "customer") {
         return Err(AppError::bad_request("invalid_level", "invalid slug or organization kind"));
@@ -394,7 +496,11 @@ pub async fn put_level(State(state): State<AppState>, user: CurrentUser, Path(sl
     Ok(Json(json!({ "ok": true })))
 }
 
-pub async fn delete_level(State(state): State<AppState>, user: CurrentUser, Path(slug): Path<String>) -> AppResult<Json<Value>> {
+pub async fn delete_level(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(slug): Path<String>,
+) -> AppResult<Json<Value>> {
     admin(&user)?;
     sqlx::query("DELETE FROM requirement_levels WHERE slug = $1").bind(&slug).execute(&state.db).await?;
     audit::log(&state.db, Some(user.id), "level.delete", Some(slug), json!({})).await?;
@@ -407,13 +513,16 @@ pub async fn delete_level(State(state): State<AppState>, user: CurrentUser, Path
 
 pub async fn list_tracks(State(state): State<AppState>, user: CurrentUser) -> AppResult<Json<Value>> {
     author(&user)?;
-    let tracks: Vec<catalog::Track> = sqlx::query_as("SELECT * FROM tracks ORDER BY position, title").fetch_all(&state.db).await?;
+    let tracks: Vec<catalog::Track> =
+        sqlx::query_as("SELECT * FROM tracks ORDER BY position, title").fetch_all(&state.db).await?;
     let mut out = Vec::new();
     for t in tracks {
         let def = t.exam_def()?;
         let mut readiness = attempts::content_blockers(&state.db, &t, &def).await?;
         if let Some(r) = t.recert_def()? {
-            readiness.extend(attempts::content_blockers(&state.db, &t, &r).await?.into_iter().map(|b| format!("recert:{b}")));
+            readiness.extend(
+                attempts::content_blockers(&state.db, &t, &r).await?.into_iter().map(|b| format!("recert:{b}")),
+            );
         }
         let (modules, scenarios, questions): (i64, i64, i64) = sqlx::query_as(
             "SELECT (SELECT count(*) FROM modules WHERE track_id = $1), (SELECT count(*) FROM scenarios WHERE track_id = $1),
@@ -430,7 +539,11 @@ pub async fn list_tracks(State(state): State<AppState>, user: CurrentUser) -> Ap
     Ok(Json(json!(out)))
 }
 
-pub async fn get_track(State(state): State<AppState>, user: CurrentUser, Path(slug): Path<String>) -> AppResult<Json<Value>> {
+pub async fn get_track(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(slug): Path<String>,
+) -> AppResult<Json<Value>> {
     author(&user)?;
     let t = catalog::load_track(&state.db, &slug).await?;
     let modules: Option<Value> = sqlx::query_scalar(
@@ -477,7 +590,12 @@ pub async fn get_track(State(state): State<AppState>, user: CurrentUser, Path(sl
     })))
 }
 
-pub async fn put_track(State(state): State<AppState>, user: CurrentUser, Path(slug): Path<String>, Json(tf): Json<TrackFile>) -> AppResult<Json<Value>> {
+pub async fn put_track(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(slug): Path<String>,
+    Json(tf): Json<TrackFile>,
+) -> AppResult<Json<Value>> {
     author(&user)?;
     if !is_slug(&slug) {
         return Err(AppError::bad_request("invalid_slug", "lowercase letters, digits and dashes"));
@@ -486,7 +604,8 @@ pub async fn put_track(State(state): State<AppState>, user: CurrentUser, Path(sl
     if let Some(r) = &tf.recert_exam {
         r.validate().map_err(|e| bad("invalid_exam", e))?;
     }
-    if tf.audiences.is_empty() || !tf.audiences.iter().all(|a| matches!(a.as_str(), "public" | "partner" | "customer")) {
+    if tf.audiences.is_empty() || !tf.audiences.iter().all(|a| matches!(a.as_str(), "public" | "partner" | "customer"))
+    {
         return Err(AppError::bad_request("invalid_audiences", "audiences: public, partner, customer"));
     }
     sqlx::query(
@@ -520,12 +639,18 @@ pub async fn put_track(State(state): State<AppState>, user: CurrentUser, Path(sl
     Ok(Json(json!({ "ok": true })))
 }
 
-pub async fn delete_track(State(state): State<AppState>, user: CurrentUser, Path(slug): Path<String>) -> AppResult<Json<Value>> {
+pub async fn delete_track(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(slug): Path<String>,
+) -> AppResult<Json<Value>> {
     admin(&user)?;
-    let has_certs: bool = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM certifications c JOIN tracks t ON t.id = c.track_id WHERE t.slug = $1)")
-        .bind(&slug)
-        .fetch_one(&state.db)
-        .await?;
+    let has_certs: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM certifications c JOIN tracks t ON t.id = c.track_id WHERE t.slug = $1)",
+    )
+    .bind(&slug)
+    .fetch_one(&state.db)
+    .await?;
     if has_certs {
         return Err(AppError::conflict("track_has_certifications", "unpublish the track instead of deleting it"));
     }
@@ -606,10 +731,18 @@ pub async fn put_module(
     Ok(Json(json!({ "ok": true })))
 }
 
-pub async fn delete_module(State(state): State<AppState>, user: CurrentUser, Path((slug, mslug)): Path<(String, String)>) -> AppResult<Json<Value>> {
+pub async fn delete_module(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path((slug, mslug)): Path<(String, String)>,
+) -> AppResult<Json<Value>> {
     author(&user)?;
     let track = catalog::load_track(&state.db, &slug).await?;
-    sqlx::query("DELETE FROM modules WHERE track_id = $1 AND slug = $2").bind(track.id).bind(&mslug).execute(&state.db).await?;
+    sqlx::query("DELETE FROM modules WHERE track_id = $1 AND slug = $2")
+        .bind(track.id)
+        .bind(&mslug)
+        .execute(&state.db)
+        .await?;
     audit::log(&state.db, Some(user.id), "content.module.delete", Some(format!("{slug}/{mslug}")), json!({})).await?;
     Ok(Json(json!({ "ok": true })))
 }
@@ -653,7 +786,10 @@ pub async fn put_scenario(
 ) -> AppResult<Json<Value>> {
     author(&user)?;
     if !is_slug(&sslug) || r.title.trim().is_empty() || !matches!(r.kind.as_str(), "implementation" | "diagnostic") {
-        return Err(AppError::bad_request("invalid_scenario", "slug, title and kind (implementation|diagnostic) required"));
+        return Err(AppError::bad_request(
+            "invalid_scenario",
+            "slug, title and kind (implementation|diagnostic) required",
+        ));
     }
     for (i, s) in r.steps.iter().enumerate() {
         for a in &s.annotations {
@@ -702,10 +838,18 @@ pub async fn put_scenario(
     Ok(Json(json!({ "ok": true })))
 }
 
-pub async fn delete_scenario(State(state): State<AppState>, user: CurrentUser, Path((slug, sslug)): Path<(String, String)>) -> AppResult<Json<Value>> {
+pub async fn delete_scenario(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path((slug, sslug)): Path<(String, String)>,
+) -> AppResult<Json<Value>> {
     author(&user)?;
     let track = catalog::load_track(&state.db, &slug).await?;
-    sqlx::query("DELETE FROM scenarios WHERE track_id = $1 AND slug = $2").bind(track.id).bind(&sslug).execute(&state.db).await?;
+    sqlx::query("DELETE FROM scenarios WHERE track_id = $1 AND slug = $2")
+        .bind(track.id)
+        .bind(&sslug)
+        .execute(&state.db)
+        .await?;
     audit::log(&state.db, Some(user.id), "content.scenario.delete", Some(format!("{slug}/{sslug}")), json!({})).await?;
     Ok(Json(json!({ "ok": true })))
 }
@@ -736,11 +880,20 @@ fn default_true() -> bool {
     true
 }
 
-pub async fn put_question(State(state): State<AppState>, user: CurrentUser, Path(reference): Path<String>, Json(r): Json<QuestionReq>) -> AppResult<Json<Value>> {
+pub async fn put_question(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(reference): Path<String>,
+    Json(r): Json<QuestionReq>,
+) -> AppResult<Json<Value>> {
     author(&user)?;
     let track = catalog::load_track(&state.db, &r.track).await?;
-    let module_slugs: Vec<String> = sqlx::query_scalar("SELECT slug FROM modules WHERE track_id = $1").bind(track.id).fetch_all(&state.db).await?;
-    let scenario_slugs: Vec<String> = sqlx::query_scalar("SELECT slug FROM scenarios WHERE track_id = $1").bind(track.id).fetch_all(&state.db).await?;
+    let module_slugs: Vec<String> =
+        sqlx::query_scalar("SELECT slug FROM modules WHERE track_id = $1").bind(track.id).fetch_all(&state.db).await?;
+    let scenario_slugs: Vec<String> = sqlx::query_scalar("SELECT slug FROM scenarios WHERE track_id = $1")
+        .bind(track.id)
+        .fetch_all(&state.db)
+        .await?;
     let mut q = QuestionFile {
         reference: reference.clone(),
         pool: r.pool,
@@ -756,14 +909,27 @@ pub async fn put_question(State(state): State<AppState>, user: CurrentUser, Path
     let ss: Vec<&str> = scenario_slugs.iter().map(String::as_str).collect();
     pack::validate_question(&mut q, &ms, &ss).map_err(|e| bad("invalid_question", e))?;
     let module_id: Option<Uuid> = match &q.module {
-        Some(m) => sqlx::query_scalar("SELECT id FROM modules WHERE track_id = $1 AND slug = $2").bind(track.id).bind(m).fetch_optional(&state.db).await?,
+        Some(m) => {
+            sqlx::query_scalar("SELECT id FROM modules WHERE track_id = $1 AND slug = $2")
+                .bind(track.id)
+                .bind(m)
+                .fetch_optional(&state.db)
+                .await?
+        }
         None => None,
     };
     let scenario_id: Option<Uuid> = match &q.scenario {
-        Some(s) => sqlx::query_scalar("SELECT id FROM scenarios WHERE track_id = $1 AND slug = $2").bind(track.id).bind(s).fetch_optional(&state.db).await?,
+        Some(s) => {
+            sqlx::query_scalar("SELECT id FROM scenarios WHERE track_id = $1 AND slug = $2")
+                .bind(track.id)
+                .bind(s)
+                .fetch_optional(&state.db)
+                .await?
+        }
         None => None,
     };
-    let choices: Vec<Value> = q.choices.iter().map(|c| json!({ "id": c.id, "text": c.text, "correct": c.correct })).collect();
+    let choices: Vec<Value> =
+        q.choices.iter().map(|c| json!({ "id": c.id, "text": c.text, "correct": c.correct })).collect();
     sqlx::query(
         "INSERT INTO questions (id, ref, track_id, pool, module_id, scenario_id, format, prompt_md, choices, explanation_md, active, updated_at)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, now())
@@ -787,14 +953,25 @@ pub async fn put_question(State(state): State<AppState>, user: CurrentUser, Path
     Ok(Json(json!({ "ok": true })))
 }
 
-pub async fn deactivate_question(State(state): State<AppState>, user: CurrentUser, Path(reference): Path<String>) -> AppResult<Json<Value>> {
+pub async fn deactivate_question(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(reference): Path<String>,
+) -> AppResult<Json<Value>> {
     author(&user)?;
-    sqlx::query("UPDATE questions SET active = FALSE, updated_at = now() WHERE ref = $1").bind(&reference).execute(&state.db).await?;
+    sqlx::query("UPDATE questions SET active = FALSE, updated_at = now() WHERE ref = $1")
+        .bind(&reference)
+        .execute(&state.db)
+        .await?;
     audit::log(&state.db, Some(user.id), "content.question.deactivate", Some(reference), json!({})).await?;
     Ok(Json(json!({ "ok": true })))
 }
 
-pub async fn upload_asset(State(state): State<AppState>, user: CurrentUser, mut multipart: Multipart) -> AppResult<Json<Value>> {
+pub async fn upload_asset(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    mut multipart: Multipart,
+) -> AppResult<Json<Value>> {
     author(&user)?;
     let mut out = Vec::new();
     while let Some(field) = multipart.next_field().await.map_err(|e| bad("invalid_upload", e))? {
@@ -818,7 +995,12 @@ pub struct AnnounceReq {
 }
 
 /// E-mails every learner enrolled in a track about new or updated content.
-pub async fn announce(State(state): State<AppState>, user: CurrentUser, Path(slug): Path<String>, Json(r): Json<AnnounceReq>) -> AppResult<Json<Value>> {
+pub async fn announce(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(slug): Path<String>,
+    Json(r): Json<AnnounceReq>,
+) -> AppResult<Json<Value>> {
     author(&user)?;
     let track = catalog::load_track(&state.db, &slug).await?;
     let learners: Vec<(String, String)> = sqlx::query_as(
@@ -829,8 +1011,15 @@ pub async fn announce(State(state): State<AppState>, user: CurrentUser, Path(slu
     .await?;
     let link = state.config.public_url(&format!("/tracks/{slug}"));
     for (email, name) in &learners {
-        mail::send_template(&state, email, "new_content", json!({ "name": name, "track": track.title, "message": r.message, "link": link })).await?;
+        mail::send_template(
+            &state,
+            email,
+            "new_content",
+            json!({ "name": name, "track": track.title, "message": r.message, "link": link }),
+        )
+        .await?;
     }
-    audit::log(&state.db, Some(user.id), "content.announce", Some(slug), json!({ "recipients": learners.len() })).await?;
+    audit::log(&state.db, Some(user.id), "content.announce", Some(slug), json!({ "recipients": learners.len() }))
+        .await?;
     Ok(Json(json!({ "recipients": learners.len() })))
 }

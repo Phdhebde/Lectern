@@ -432,10 +432,7 @@ mod tests {
         assert_eq!(check_eligibility(&d, &[], 0, at(1)), Ok(Eligibility::Free));
         assert_eq!(check_eligibility(&d, &[failed(1)], 0, at(1)), Ok(Eligibility::Free));
         let two = [failed(1), failed(2)];
-        assert_eq!(
-            check_eligibility(&d, &two, 1, at(5)),
-            Err(Ineligible::Cooldown { retry_at: at(9) })
-        );
+        assert_eq!(check_eligibility(&d, &two, 1, at(5)), Err(Ineligible::Cooldown { retry_at: at(9) }));
         assert_eq!(check_eligibility(&d, &two, 0, at(9)), Err(Ineligible::NoAttemptLeft));
         assert_eq!(check_eligibility(&d, &two, 1, at(9)), Ok(Eligibility::UsesCredit));
     }
@@ -480,10 +477,7 @@ mod tests {
             duration_minutes: 10,
             pass_percent: 50,
             scenarios: vec![],
-            items: [q1, q2]
-                .iter()
-                .map(|id| PaperItem { question_id: *id, choice_order: vec![] })
-                .collect(),
+            items: [q1, q2].iter().map(|id| PaperItem { question_id: *id, choice_order: vec![] }).collect(),
         };
         let mut keys = HashMap::new();
         keys.insert(q1, key(&["a"]));
@@ -501,7 +495,8 @@ mod tests {
         assert!(r2.needs_review);
         assert_eq!(overall_status(&[r.clone(), r2]), "pending_review");
 
-        let failing = SectionResult { score: Some(10), correct: 1, total: 10, needs_review: false, passed: Some(false) };
+        let failing =
+            SectionResult { score: Some(10), correct: 1, total: 10, needs_review: false, passed: Some(false) };
         assert_eq!(overall_status(&[r, failing]), "failed");
     }
 

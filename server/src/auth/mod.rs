@@ -127,10 +127,7 @@ impl CurrentUser {
 
     /// Organization the user manages, if they are an approved training manager.
     pub fn managed_org(&self) -> Option<Uuid> {
-        self.membership
-            .as_ref()
-            .filter(|m| m.approved() && m.org_role == "training_manager")
-            .map(|m| m.org_id)
+        self.membership.as_ref().filter(|m| m.approved() && m.org_role == "training_manager").map(|m| m.org_id)
     }
 
     /// Kind of organization the user is an approved member of.
@@ -149,11 +146,7 @@ struct SessionRow {
     public_profile: bool,
 }
 
-pub async fn load_user(
-    db: &PgPool,
-    session_hash: &[u8],
-    require_mfa_for: &[String],
-) -> AppResult<Option<CurrentUser>> {
+pub async fn load_user(db: &PgPool, session_hash: &[u8], require_mfa_for: &[String]) -> AppResult<Option<CurrentUser>> {
     let row: Option<SessionRow> = sqlx::query_as(
         "SELECT s.user_id, s.csrf_token, s.mfa, u.email, u.display_name, u.public_profile
          FROM sessions s JOIN users u ON u.id = s.user_id
@@ -163,10 +156,8 @@ pub async fn load_user(
     .fetch_optional(db)
     .await?;
     let Some(row) = row else { return Ok(None) };
-    let roles: Vec<String> = sqlx::query_scalar("SELECT role FROM user_roles WHERE user_id = $1")
-        .bind(row.user_id)
-        .fetch_all(db)
-        .await?;
+    let roles: Vec<String> =
+        sqlx::query_scalar("SELECT role FROM user_roles WHERE user_id = $1").bind(row.user_id).fetch_all(db).await?;
     let membership = load_membership(db, row.user_id).await?;
     Ok(Some(CurrentUser {
         id: row.user_id,
@@ -275,12 +266,7 @@ pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
 }
 
 /// Creates a session and returns the cookie to set.
-pub async fn create_session(
-    state: &AppState,
-    user_id: Uuid,
-    method: &str,
-    mfa: bool,
-) -> AppResult<Cookie<'static>> {
+pub async fn create_session(state: &AppState, user_id: Uuid, method: &str, mfa: bool) -> AppResult<Cookie<'static>> {
     let token = random_token();
     let expires: DateTime<Utc> = Utc::now() + Duration::hours(state.config.auth.session_hours);
     sqlx::query(
@@ -295,10 +281,7 @@ pub async fn create_session(
     .bind(expires)
     .execute(&state.db)
     .await?;
-    sqlx::query("UPDATE users SET last_login_at = now() WHERE id = $1")
-        .bind(user_id)
-        .execute(&state.db)
-        .await?;
+    sqlx::query("UPDATE users SET last_login_at = now() WHERE id = $1").bind(user_id).execute(&state.db).await?;
     Ok(session_cookie(state, token, state.config.auth.session_hours))
 }
 
@@ -323,6 +306,17 @@ pub async fn upsert_user_by_email(db: &PgPool, email: &str, display_name: &str) 
         .fetch_optional(db)
         .await?;
     if let Some(id) = existing {
+        // Accounts pre-created by an administrator carry a placeholder name (the
+        // e-mail local part) until their owner gives one at first sign-in.
+        if !display_name.trim().is_empty() {
+            sqlx::query(
+                "UPDATE users SET display_name = $2 WHERE id = $1 AND display_name = split_part(email, '@', 1)",
+            )
+            .bind(id)
+            .bind(display_name.trim())
+            .execute(db)
+            .await?;
+        }
         return Ok(id);
     }
     let name = if display_name.trim().is_empty() {

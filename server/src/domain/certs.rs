@@ -11,7 +11,8 @@ use crate::domain::exam::expiry_date;
 use crate::error::AppResult;
 
 /// SQL predicate (alias `c`) for a certification that currently counts.
-pub const VALID: &str = "c.revoked_at IS NULL AND c.superseded_by IS NULL AND (c.expires_at IS NULL OR c.expires_at > now())";
+pub const VALID: &str =
+    "c.revoked_at IS NULL AND c.superseded_by IS NULL AND (c.expires_at IS NULL OR c.expires_at > now())";
 
 #[derive(Debug, Clone, Serialize, sqlx::FromRow)]
 pub struct Certification {

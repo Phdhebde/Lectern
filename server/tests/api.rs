@@ -62,7 +62,13 @@ struct Session {
 }
 
 impl TestApp {
-    async fn call(&self, method: Method, uri: &str, session: Option<&Session>, body: Option<Value>) -> (StatusCode, Value) {
+    async fn call(
+        &self,
+        method: Method,
+        uri: &str,
+        session: Option<&Session>,
+        body: Option<Value>,
+    ) -> (StatusCode, Value) {
         let mut req = Request::builder().method(method.clone()).uri(uri).header(header::ORIGIN, ORIGIN);
         if let Some(s) = session {
             req = req.header(header::COOKIE, &s.cookie);
@@ -77,7 +83,9 @@ impl TestApp {
         let res = self.router.clone().oneshot(req).await.unwrap();
         let status = res.status();
         let bytes = axum::body::to_bytes(res.into_body(), 50_000_000).await.unwrap();
-        let v = serde_json::from_slice(&bytes).unwrap_or_else(|_| json!({ "raw_len": bytes.len(), "head": String::from_utf8_lossy(&bytes[..bytes.len().min(8)]) }));
+        let v = serde_json::from_slice(&bytes).unwrap_or_else(
+            |_| json!({ "raw_len": bytes.len(), "head": String::from_utf8_lossy(&bytes[..bytes.len().min(8)]) }),
+        );
         (status, v)
     }
 
@@ -96,14 +104,21 @@ impl TestApp {
     /// Signs in through the real e-mail link flow, reading the link from the outbox.
     async fn login(&self, email: &str) -> Session {
         let (status, _) = self
-            .call(Method::POST, "/api/auth/email/request", None, Some(json!({ "email": email, "display_name": "Test User" })))
+            .call(
+                Method::POST,
+                "/api/auth/email/request",
+                None,
+                Some(json!({ "email": email, "display_name": "Test User" })),
+            )
             .await;
         assert_eq!(status, StatusCode::OK);
-        let body: String = sqlx::query_scalar("SELECT text_body FROM email_outbox WHERE to_address = $1 ORDER BY created_at DESC LIMIT 1")
-            .bind(email)
-            .fetch_one(&self.state.db)
-            .await
-            .unwrap();
+        let body: String = sqlx::query_scalar(
+            "SELECT text_body FROM email_outbox WHERE to_address = $1 ORDER BY created_at DESC LIMIT 1",
+        )
+        .bind(email)
+        .fetch_one(&self.state.db)
+        .await
+        .unwrap();
         let token = body.split("token=").nth(1).unwrap().split(')').next().unwrap().to_string();
         let req = Request::post("/api/auth/email/verify")
             .header(header::CONTENT_TYPE, "application/json")
@@ -180,7 +195,12 @@ impl TestApp {
                 json!([])
             };
             let (st, v) = self
-                .call(Method::PUT, &format!("/api/attempts/{attempt}/answers"), Some(s), Some(json!({ "question_id": qid, "answer": answer })))
+                .call(
+                    Method::PUT,
+                    &format!("/api/attempts/{attempt}/answers"),
+                    Some(s),
+                    Some(json!({ "question_id": qid, "answer": answer })),
+                )
                 .await;
             assert_eq!(st, StatusCode::OK, "{v}");
         }
@@ -224,7 +244,8 @@ async fn discovery_path_to_verified_badge(db: PgPool) {
     let id = cert["id"].as_str().unwrap();
 
     // Public verification page and Open Badges assertion.
-    let res = app.router.clone().oneshot(Request::get(format!("/verify/{id}")).body(Body::empty()).unwrap()).await.unwrap();
+    let res =
+        app.router.clone().oneshot(Request::get(format!("/verify/{id}")).body(Body::empty()).unwrap()).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     assert!(res.headers()["content-security-policy"].to_str().unwrap().contains("default-src 'self'"));
     let html = String::from_utf8(axum::body::to_bytes(res.into_body(), 1_000_000).await.unwrap().to_vec()).unwrap();
@@ -284,21 +305,40 @@ async fn organizations_are_isolated_and_requirements_counted(db: PgPool) {
     let admin = app.login("admin@example.com").await;
     app.grant(&admin, "admin").await;
 
-    let a = app.post("/api/admin/organizations", &admin, json!({ "name": "Partner A", "kind": "partner", "level_slug": "partner-silver" })).await;
+    let a = app
+        .post(
+            "/api/admin/organizations",
+            &admin,
+            json!({ "name": "Partner A", "kind": "partner", "level_slug": "partner-silver" }),
+        )
+        .await;
     let b = app.post("/api/admin/organizations", &admin, json!({ "name": "Partner B", "kind": "partner" })).await;
     let (a, b) = (a["id"].as_str().unwrap(), b["id"].as_str().unwrap());
-    app.post(&format!("/api/admin/organizations/{a}/managers"), &admin, json!({ "email": "manager-a@example.com" })).await;
-    app.post(&format!("/api/admin/organizations/{b}/managers"), &admin, json!({ "email": "manager-b@example.com" })).await;
+    app.post(&format!("/api/admin/organizations/{a}/managers"), &admin, json!({ "email": "manager-a@example.com" }))
+        .await;
+    app.post(&format!("/api/admin/organizations/{b}/managers"), &admin, json!({ "email": "manager-b@example.com" }))
+        .await;
 
     let manager_a = app.login("manager-a@example.com").await;
     let org_a = app.get("/api/organization", &manager_a).await;
     let code_a = org_a["join_code"].as_str().unwrap().to_string();
-    let code_b: String = sqlx::query_scalar("SELECT join_code FROM organizations WHERE id = $1::uuid").bind(b).fetch_one(&app.state.db).await.unwrap();
+    let code_b: String = sqlx::query_scalar("SELECT join_code FROM organizations WHERE id = $1::uuid")
+        .bind(b)
+        .fetch_one(&app.state.db)
+        .await
+        .unwrap();
 
     // A learner joins B: manager A cannot see nor approve them.
     let learner = app.login("tech@example.com").await;
     app.post("/api/me/organization", &learner, json!({ "join_code": code_b })).await;
-    let (st, _) = app.call(Method::POST, &format!("/api/organization/members/{}/decision", learner.id), Some(&manager_a), Some(json!({ "approve": true }))).await;
+    let (st, _) = app
+        .call(
+            Method::POST,
+            &format!("/api/organization/members/{}/decision", learner.id),
+            Some(&manager_a),
+            Some(json!({ "approve": true })),
+        )
+        .await;
     assert_eq!(st, StatusCode::NOT_FOUND);
     let org_a = app.get("/api/organization", &manager_a).await;
     assert!(!org_a.to_string().contains("tech@example.com"));
@@ -310,7 +350,8 @@ async fn organizations_are_isolated_and_requirements_counted(db: PgPool) {
     // A learner of A, approved, certified Associate: counted for A's Silver requirements.
     let seller = app.login("seller@example.com").await;
     app.post("/api/me/organization", &seller, json!({ "join_code": code_a })).await;
-    app.post(&format!("/api/organization/members/{}/decision", seller.id), &manager_a, json!({ "approve": true })).await;
+    app.post(&format!("/api/organization/members/{}/decision", seller.id), &manager_a, json!({ "approve": true }))
+        .await;
     let seller = app.login("seller@example.com").await;
     app.complete_modules(&seller, "associate").await;
     let attempt = app.post("/api/tracks/associate/exam", &seller, json!({})).await;
@@ -376,7 +417,9 @@ async fn engineer_exam_attempt_policy_and_case_study_protection(db: PgPool) {
             let qid = q["id"].as_str().unwrap();
             answers.insert(qid.into(), json!(app.correct_choices(qid).await));
         }
-        let r = app.post(&format!("/api/scenarios/{}/check", sc["id"].as_str().unwrap()), &s, json!({ "answers": answers })).await;
+        let r = app
+            .post(&format!("/api/scenarios/{}/check", sc["id"].as_str().unwrap()), &s, json!({ "answers": answers }))
+            .await;
         assert_eq!(r["passed"], json!(true));
     }
 
@@ -429,7 +472,10 @@ async fn account_export_and_erasure(db: PgPool) {
 
     let (st, _) = app.call(Method::DELETE, "/api/me", Some(&s), None).await;
     assert_eq!(st, StatusCode::OK);
-    let n: i64 = sqlx::query_scalar("SELECT count(*) FROM users WHERE email = 'gdpr@example.com'").fetch_one(&app.state.db).await.unwrap();
+    let n: i64 = sqlx::query_scalar("SELECT count(*) FROM users WHERE email = 'gdpr@example.com'")
+        .fetch_one(&app.state.db)
+        .await
+        .unwrap();
     assert_eq!(n, 0);
     let (st, _) = app.call(Method::GET, "/api/me", Some(&s), None).await;
     assert_eq!(st, StatusCode::UNAUTHORIZED);
@@ -442,7 +488,8 @@ async fn pack_export_reimports_identically(db: PgPool) {
     let files = pack::PackFiles::from_zip(&zip, 100_000_000).unwrap();
     let report = pack::import(&app.state.db, &app._data.0, &files).await.unwrap();
     assert_eq!(report.tracks, 5);
-    let active: i64 = sqlx::query_scalar("SELECT count(*) FROM questions WHERE active").fetch_one(&app.state.db).await.unwrap();
+    let active: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM questions WHERE active").fetch_one(&app.state.db).await.unwrap();
     let total: i64 = sqlx::query_scalar("SELECT count(*) FROM questions").fetch_one(&app.state.db).await.unwrap();
     assert_eq!(active, total, "re-import keeps every question active");
 }
@@ -462,7 +509,10 @@ async fn expert_written_case_needs_manual_review(db: PgPool) {
     // Prerequisite: a valid Engineer certification.
     let (_, v) = app.call(Method::POST, "/api/tracks/expert/exam", Some(&s), None).await;
     assert!(v["details"].to_string().contains("prerequisite:engineer"), "{v}");
-    let engineer: String = sqlx::query_scalar("SELECT id::text FROM tracks WHERE slug = 'engineer'").fetch_one(&app.state.db).await.unwrap();
+    let engineer: String = sqlx::query_scalar("SELECT id::text FROM tracks WHERE slug = 'engineer'")
+        .fetch_one(&app.state.db)
+        .await
+        .unwrap();
     sqlx::query("INSERT INTO certifications (id, user_id, track_id, expires_at) VALUES (gen_random_uuid(), $1::uuid, $2::uuid, now() + interval '1 year')")
         .bind(&s.id)
         .bind(&engineer)

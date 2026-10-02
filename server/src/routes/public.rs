@@ -63,7 +63,10 @@ pub async fn server_css(State(state): State<AppState>) -> AppResult<Response> {
 
 fn css(body: String) -> Response {
     (
-        [(header::CONTENT_TYPE, HeaderValue::from_static("text/css; charset=utf-8")), (header::CACHE_CONTROL, HeaderValue::from_static("public, max-age=300"))],
+        [
+            (header::CONTENT_TYPE, HeaderValue::from_static("text/css; charset=utf-8")),
+            (header::CACHE_CONTROL, HeaderValue::from_static("public, max-age=300")),
+        ],
         body,
     )
         .into_response()
@@ -85,7 +88,8 @@ pub struct CatalogEntry {
 }
 
 pub async fn catalog(State(state): State<AppState>, MaybeUser(user): MaybeUser) -> AppResult<Json<Vec<CatalogEntry>>> {
-    let tracks: Vec<Track> = sqlx::query_as("SELECT * FROM tracks ORDER BY position, title").fetch_all(&state.db).await?;
+    let tracks: Vec<Track> =
+        sqlx::query_as("SELECT * FROM tracks ORDER BY position, title").fetch_all(&state.db).await?;
     let user_id = user.as_ref().map(|u| u.id);
     let mut out = Vec::new();
     let user_certs = match user_id {

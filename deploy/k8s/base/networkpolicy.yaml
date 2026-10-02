@@ -1,0 +1,26 @@
+# Ingress only from the ingress controller; egress only to DNS, PostgreSQL, SMTP and HTTPS
+# (identity provider). Tighten the egress CIDRs in the overlay when they are known.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: lectern
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: server
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - port: 8080
+  egress:
+    - ports:
+        - { port: 53, protocol: UDP }
+        - { port: 53, protocol: TCP }
+        - { port: 5432, protocol: TCP }
+        - { port: 465, protocol: TCP }
+        - { port: 587, protocol: TCP }
+        - { port: 443, protocol: TCP }

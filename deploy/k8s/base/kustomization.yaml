@@ -1,0 +1,15 @@
+# Generic Lectern deployment for K3s (Traefik ingress) driven by GitOps (Argo CD / Flux).
+# Instances customize it with an overlay: configuration, branding, host name, secrets.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+labels:
+  - pairs:
+      app.kubernetes.io/name: lectern
+    includeSelectors: true
+resources:
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - pvc.yaml
+  - networkpolicy.yaml
+  - backup-cronjob.yaml

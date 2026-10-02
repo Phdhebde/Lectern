@@ -25,7 +25,8 @@ use crate::config::OidcConfig;
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
 
-type Client = CoreClient<EndpointSet, EndpointNotSet, EndpointNotSet, EndpointNotSet, EndpointMaybeSet, EndpointMaybeSet>;
+type Client =
+    CoreClient<EndpointSet, EndpointNotSet, EndpointNotSet, EndpointNotSet, EndpointMaybeSet, EndpointMaybeSet>;
 
 pub struct OidcProvider {
     config: OidcConfig,
@@ -74,16 +75,15 @@ pub async fn login(State(state): State<AppState>, Query(q): Query<LoginQuery>) -
     let provider = state.oidc.as_ref().ok_or(AppError::NotFound)?;
     let client = provider.client().await?;
     let (challenge, verifier) = PkceCodeChallenge::new_random_sha256();
-    let mut req = client.authorize_url(CoreAuthenticationFlow::AuthorizationCode, CsrfToken::new_random, Nonce::new_random);
+    let mut req =
+        client.authorize_url(CoreAuthenticationFlow::AuthorizationCode, CsrfToken::new_random, Nonce::new_random);
     for scope in &provider.config.scopes {
         if scope != "openid" {
             req = req.add_scope(Scope::new(scope.clone()));
         }
     }
     let (url, csrf, nonce) = req.set_pkce_challenge(challenge).url();
-    sqlx::query("DELETE FROM oidc_flows WHERE created_at < now() - interval '15 minutes'")
-        .execute(&state.db)
-        .await?;
+    sqlx::query("DELETE FROM oidc_flows WHERE created_at < now() - interval '15 minutes'").execute(&state.db).await?;
     sqlx::query("INSERT INTO oidc_flows (state, pkce_verifier, nonce, return_to) VALUES ($1, $2, $3, $4)")
         .bind(csrf.secret())
         .bind(verifier.secret())
@@ -140,9 +140,8 @@ pub async fn callback(
         .map_err(|e| anyhow::anyhow!("token exchange failed: {e}"))?;
     let id_token = token_response.id_token().ok_or_else(|| anyhow::anyhow!("no ID token returned"))?;
     let verifier = client.id_token_verifier();
-    let claims = id_token
-        .claims(&verifier, &Nonce::new(flow.nonce))
-        .map_err(|e| anyhow::anyhow!("invalid ID token: {e}"))?;
+    let claims =
+        id_token.claims(&verifier, &Nonce::new(flow.nonce)).map_err(|e| anyhow::anyhow!("invalid ID token: {e}"))?;
     if let Some(expected) = claims.access_token_hash() {
         let actual = AccessTokenHash::from_token(
             token_response.access_token(),
@@ -167,11 +166,7 @@ pub async fn callback(
     if claims.email_verified() == Some(false) {
         return Err(AppError::bad_request("oidc_email_unverified", "e-mail not verified by the identity provider"));
     }
-    let name = claims
-        .name()
-        .and_then(|n| n.get(None))
-        .map(|n| n.as_str().to_string())
-        .unwrap_or_default();
+    let name = claims.name().and_then(|n| n.get(None)).map(|n| n.as_str().to_string()).unwrap_or_default();
 
     let user_id = link_identity(&state, &issuer, &subject, &email, &name).await?;
     if let Some(claim) = &provider.config.roles_claim {
@@ -224,10 +219,8 @@ fn decode_jwt_payload(jwt: &str) -> Option<Value> {
 }
 
 pub fn is_mfa(payload: &Value, config: &OidcConfig) -> bool {
-    let acr_ok = payload
-        .get("acr")
-        .and_then(Value::as_str)
-        .is_some_and(|acr| config.mfa_acr_values.iter().any(|v| v == acr));
+    let acr_ok =
+        payload.get("acr").and_then(Value::as_str).is_some_and(|acr| config.mfa_acr_values.iter().any(|v| v == acr));
     let amr_ok = payload
         .get("amr")
         .and_then(Value::as_array)
@@ -244,10 +237,7 @@ pub fn roles_from_claim(payload: &Value, path: &str) -> Vec<Role> {
             None => return Vec::new(),
         }
     }
-    cursor
-        .as_array()
-        .map(|a| a.iter().filter_map(Value::as_str).filter_map(Role::parse).collect())
-        .unwrap_or_default()
+    cursor.as_array().map(|a| a.iter().filter_map(Value::as_str).filter_map(Role::parse).collect()).unwrap_or_default()
 }
 
 #[cfg(test)]

@@ -47,21 +47,37 @@ pub struct ProfileUpdate {
     public_profile: Option<bool>,
 }
 
-pub async fn update_profile(State(state): State<AppState>, user: CurrentUser, Json(req): Json<ProfileUpdate>) -> AppResult<Json<Value>> {
+pub async fn update_profile(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Json(req): Json<ProfileUpdate>,
+) -> AppResult<Json<Value>> {
     if let Some(name) = &req.display_name {
         let name = name.trim();
         if name.is_empty() || name.chars().count() > 120 {
             return Err(AppError::bad_request("invalid_name", "name must be 1-120 characters"));
         }
-        sqlx::query("UPDATE users SET display_name = $2 WHERE id = $1").bind(user.id).bind(name).execute(&state.db).await?;
+        sqlx::query("UPDATE users SET display_name = $2 WHERE id = $1")
+            .bind(user.id)
+            .bind(name)
+            .execute(&state.db)
+            .await?;
     }
     if let Some(public) = req.public_profile {
-        sqlx::query("UPDATE users SET public_profile = $2 WHERE id = $1").bind(user.id).bind(public).execute(&state.db).await?;
+        sqlx::query("UPDATE users SET public_profile = $2 WHERE id = $1")
+            .bind(user.id)
+            .bind(public)
+            .execute(&state.db)
+            .await?;
     }
     Ok(Json(json!({ "ok": true })))
 }
 
-pub async fn logout(State(state): State<AppState>, jar: CookieJar, user: CurrentUser) -> AppResult<(CookieJar, Json<Value>)> {
+pub async fn logout(
+    State(state): State<AppState>,
+    jar: CookieJar,
+    user: CurrentUser,
+) -> AppResult<(CookieJar, Json<Value>)> {
     sqlx::query("DELETE FROM sessions WHERE token_hash = $1").bind(&user.session_hash).execute(&state.db).await?;
     Ok((jar.add(auth::clear_session_cookie(&state)), Json(json!({ "ok": true }))))
 }
@@ -89,7 +105,10 @@ pub async fn export(State(state): State<AppState>, user: CurrentUser) -> AppResu
     });
     let body = serde_json::to_string_pretty(&data).map_err(anyhow::Error::from)?;
     Ok((
-        [(header::CONTENT_TYPE, "application/json"), (header::CONTENT_DISPOSITION, "attachment; filename=\"my-data.json\"")],
+        [
+            (header::CONTENT_TYPE, "application/json"),
+            (header::CONTENT_DISPOSITION, "attachment; filename=\"my-data.json\""),
+        ],
         body,
     )
         .into_response())
@@ -97,14 +116,21 @@ pub async fn export(State(state): State<AppState>, user: CurrentUser) -> AppResu
 
 /// Right to erasure. Anonymous per-question statistics are kept; the audit log keeps
 /// event records without the link to the person.
-pub async fn delete_account(State(state): State<AppState>, jar: CookieJar, user: CurrentUser) -> AppResult<(CookieJar, Json<Value>)> {
+pub async fn delete_account(
+    State(state): State<AppState>,
+    jar: CookieJar,
+    user: CurrentUser,
+) -> AppResult<(CookieJar, Json<Value>)> {
     let mut tx = state.db.begin().await?;
     audit::log(&mut *tx, None, "account.deleted", None, json!({})).await?;
     sqlx::query("UPDATE audit_log SET details = details - 'user' WHERE details->>'user' = $1")
         .bind(user.id.to_string())
         .execute(&mut *tx)
         .await?;
-    sqlx::query("DELETE FROM email_outbox WHERE lower(to_address) = lower($1)").bind(&user.email).execute(&mut *tx).await?;
+    sqlx::query("DELETE FROM email_outbox WHERE lower(to_address) = lower($1)")
+        .bind(&user.email)
+        .execute(&mut *tx)
+        .await?;
     sqlx::query("DELETE FROM login_tokens WHERE lower(email) = lower($1)").bind(&user.email).execute(&mut *tx).await?;
     sqlx::query("DELETE FROM users WHERE id = $1").bind(user.id).execute(&mut *tx).await?;
     tx.commit().await?;
@@ -116,7 +142,11 @@ pub struct JoinRequest {
     join_code: String,
 }
 
-pub async fn join_org(State(state): State<AppState>, user: CurrentUser, Json(req): Json<JoinRequest>) -> AppResult<Json<Value>> {
+pub async fn join_org(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Json(req): Json<JoinRequest>,
+) -> AppResult<Json<Value>> {
     if user.membership.as_ref().is_some_and(|m| m.status != "rejected") {
         return Err(AppError::conflict("already_member", "leave your current organization first"));
     }
@@ -198,8 +228,19 @@ pub async fn attempts(State(state): State<AppState>, user: CurrentUser) -> AppRe
 
 /// PDF certificate. Available to the holder, their training manager and staff.
 #[allow(clippy::type_complexity)]
-pub async fn certificate_pdf(State(state): State<AppState>, user: CurrentUser, Path(id): Path<Uuid>) -> AppResult<Response> {
-    let row: (Uuid, String, String, chrono::DateTime<Utc>, Option<chrono::DateTime<Utc>>, Option<chrono::DateTime<Utc>>) = sqlx::query_as(
+pub async fn certificate_pdf(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(id): Path<Uuid>,
+) -> AppResult<Response> {
+    let row: (
+        Uuid,
+        String,
+        String,
+        chrono::DateTime<Utc>,
+        Option<chrono::DateTime<Utc>>,
+        Option<chrono::DateTime<Utc>>,
+    ) = sqlx::query_as(
         "SELECT c.user_id, u.display_name, t.title, c.issued_at, c.expires_at, c.revoked_at
          FROM certifications c JOIN users u ON u.id = c.user_id JOIN tracks t ON t.id = c.track_id WHERE c.id = $1",
     )
@@ -227,7 +268,10 @@ pub async fn certificate_pdf(State(state): State<AppState>, user: CurrentUser, P
     }
     let st = state.clone();
     let pdf = tokio::task::spawn_blocking(move || {
-        credentials::certificate_pdf(&st, &CertificateInput { id, holder: &holder, track_title: &track, issued, expires })
+        credentials::certificate_pdf(
+            &st,
+            &CertificateInput { id, holder: &holder, track_title: &track, issued, expires },
+        )
     })
     .await
     .map_err(anyhow::Error::from)??;

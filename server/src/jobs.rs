@@ -76,11 +76,13 @@ pub async fn expiry_alerts(state: &AppState) -> anyhow::Result<usize> {
         // Record this threshold and every larger one, so a late first alert is not followed by stale ones.
         let mut fresh = false;
         for d in thresholds.iter().filter(|d| **d >= days) {
-            let res = sqlx::query("INSERT INTO expiry_alerts (certification_id, days_before) VALUES ($1, $2) ON CONFLICT DO NOTHING")
-                .bind(c.id)
-                .bind(*d as i32)
-                .execute(&mut *tx)
-                .await?;
+            let res = sqlx::query(
+                "INSERT INTO expiry_alerts (certification_id, days_before) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+            )
+            .bind(c.id)
+            .bind(*d as i32)
+            .execute(&mut *tx)
+            .await?;
             if *d == days && res.rows_affected() == 1 {
                 fresh = true;
             }

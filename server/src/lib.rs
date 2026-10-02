@@ -30,10 +30,8 @@ pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 
 /// Builds the shared application state (database pool, theme, templates, OIDC client).
 pub async fn build_state(config: config::Config) -> anyhow::Result<state::AppState> {
-    let db = PgPoolOptions::new()
-        .max_connections(config.database.max_connections)
-        .connect(&config.database.url)
-        .await?;
+    let db =
+        PgPoolOptions::new().max_connections(config.database.max_connections).connect(&config.database.url).await?;
     state_with_pool(config, db)
 }
 

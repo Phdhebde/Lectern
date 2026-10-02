@@ -35,11 +35,7 @@ impl Track {
     }
 
     pub fn recert_def(&self) -> AppResult<Option<ExamDefinition>> {
-        self.recert_exam
-            .clone()
-            .map(serde_json::from_value)
-            .transpose()
-            .map_err(|e| AppError::Internal(e.into()))
+        self.recert_exam.clone().map(serde_json::from_value).transpose().map_err(|e| AppError::Internal(e.into()))
     }
 }
 
@@ -140,7 +136,12 @@ pub async fn scenario_progress(db: &PgPool, track_id: Uuid, user_id: Option<Uuid
 
 /// Module completion rule: content viewed (video watched or sheet read) and, when the
 /// module has a quiz, the quiz passed.
-pub fn module_completed(content_completed: bool, quiz_questions: i64, quiz_best: Option<i32>, pass_percent: i32) -> bool {
+pub fn module_completed(
+    content_completed: bool,
+    quiz_questions: i64,
+    quiz_best: Option<i32>,
+    pass_percent: i32,
+) -> bool {
     content_completed && (quiz_questions == 0 || quiz_best.is_some_and(|s| s >= pass_percent))
 }
 

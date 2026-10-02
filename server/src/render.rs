@@ -14,7 +14,8 @@ use serde::Serialize;
 use crate::config::Config;
 use crate::theme::Theme;
 
-const EMBEDDED_LOCALES: &[(&str, &str)] = &[("fr", include_str!("../locales/fr.toml")), ("en", include_str!("../locales/en.toml"))];
+const EMBEDDED_LOCALES: &[(&str, &str)] =
+    &[("fr", include_str!("../locales/fr.toml")), ("en", include_str!("../locales/en.toml"))];
 
 const EMBEDDED_TEMPLATES: &[(&str, &str)] = &[
     ("email.html", include_str!("../templates/email.html")),
@@ -85,7 +86,10 @@ impl Renderer {
     pub fn email(&self, kind: &str, ctx: &serde_json::Value) -> anyhow::Result<(String, String, String)> {
         let subject = self.text(&format!("email.{kind}.subject"), ctx)?;
         let body_md = self.text(&format!("email.{kind}.body"), ctx)?;
-        let html = self.template("email.html", context! { subject => &subject, body => JValue::from_safe_string(markdown(&body_md)) })?;
+        let html = self.template(
+            "email.html",
+            context! { subject => &subject, body => JValue::from_safe_string(markdown(&body_md)) },
+        )?;
         Ok((subject, html, body_md))
     }
 }
@@ -120,7 +124,6 @@ pub fn markdown(src: &str) -> String {
         .clean(&out)
         .to_string()
 }
-
 
 #[cfg(test)]
 mod tests {

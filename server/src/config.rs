@@ -300,18 +300,14 @@ impl Config {
             None => toml::Table::new(),
         };
         apply_env_overrides(&mut table, std::env::vars())?;
-        // DATABASE_URL is the de-facto standard; honour it when the file does not set one.
+        // DATABASE_URL is the de-facto standard and, like any environment value, wins over the file.
         if let Ok(url) = std::env::var("DATABASE_URL") {
-            let db = table
-                .entry("database")
-                .or_insert_with(|| toml::Value::Table(toml::Table::new()));
+            let db = table.entry("database").or_insert_with(|| toml::Value::Table(toml::Table::new()));
             if let Some(db) = db.as_table_mut() {
-                db.entry("url").or_insert(toml::Value::String(url));
+                db.insert("url".into(), toml::Value::String(url));
             }
         }
-        let config: Config = toml::Value::Table(table)
-            .try_into()
-            .context("invalid configuration")?;
+        let config: Config = toml::Value::Table(table).try_into().context("invalid configuration")?;
         config.validate()?;
         Ok(config)
     }
@@ -344,17 +340,11 @@ impl Config {
     }
 
     pub fn mail_from(&self) -> String {
-        self.mail
-            .from
-            .clone()
-            .unwrap_or_else(|| format!("{} <{}>", self.instance.name, self.instance.contact_email))
+        self.mail.from.clone().unwrap_or_else(|| format!("{} <{}>", self.instance.name, self.instance.contact_email))
     }
 }
 
-fn apply_env_overrides(
-    table: &mut toml::Table,
-    vars: impl Iterator<Item = (String, String)>,
-) -> anyhow::Result<()> {
+fn apply_env_overrides(table: &mut toml::Table, vars: impl Iterator<Item = (String, String)>) -> anyhow::Result<()> {
     for (key, raw) in vars {
         let Some(path) = key.strip_prefix("LECTERN__") else { continue };
         let segments: Vec<String> = path.split("__").map(|s| s.to_ascii_lowercase()).collect();
@@ -365,12 +355,8 @@ fn apply_env_overrides(
         let (last, parents) = segments.split_last().expect("non-empty");
         let mut cursor = &mut *table;
         for seg in parents {
-            let entry = cursor
-                .entry(seg.clone())
-                .or_insert_with(|| toml::Value::Table(toml::Table::new()));
-            cursor = entry
-                .as_table_mut()
-                .with_context(|| format!("{key}: {seg} is not a table"))?;
+            let entry = cursor.entry(seg.clone()).or_insert_with(|| toml::Value::Table(toml::Table::new()));
+            cursor = entry.as_table_mut().with_context(|| format!("{key}: {seg} is not a table"))?;
         }
         cursor.insert(last.clone(), value);
     }

@@ -202,12 +202,13 @@ pub async fn exam_status(state: &AppState, user: &CurrentUser, track: &Track) ->
             Eligibility::UsesCredit => "uses_credit",
         })
     });
-    let active_attempt: Option<Uuid> =
-        sqlx::query_scalar("SELECT id FROM exam_attempts WHERE user_id = $1 AND track_id = $2 AND status = 'in_progress'")
-            .bind(user.id)
-            .bind(track.id)
-            .fetch_optional(db)
-            .await?;
+    let active_attempt: Option<Uuid> = sqlx::query_scalar(
+        "SELECT id FROM exam_attempts WHERE user_id = $1 AND track_id = $2 AND status = 'in_progress'",
+    )
+    .bind(user.id)
+    .bind(track.id)
+    .fetch_optional(db)
+    .await?;
     Ok(ExamStatus {
         purpose,
         sections: summarize(&def),
@@ -288,8 +289,14 @@ pub async fn start(state: &AppState, user: &CurrentUser, track: &Track) -> AppRe
             return Err(AppError::conflict("not_eligible", "no attempt credit left"));
         }
     }
-    audit::log(&mut *tx, Some(user.id), "exam.start", Some(id.to_string()), json!({ "track": track.slug, "purpose": purpose.as_str() }))
-        .await?;
+    audit::log(
+        &mut *tx,
+        Some(user.id),
+        "exam.start",
+        Some(id.to_string()),
+        json!({ "track": track.slug, "purpose": purpose.as_str() }),
+    )
+    .await?;
     tx.commit().await?;
     Ok(id)
 }
@@ -398,7 +405,13 @@ pub async fn own_attempt(state: &AppState, user: &CurrentUser, id: Uuid) -> AppR
     Ok(attempt)
 }
 
-pub async fn save_answer(state: &AppState, user: &CurrentUser, id: Uuid, question_id: Uuid, answer: Answer) -> AppResult<()> {
+pub async fn save_answer(
+    state: &AppState,
+    user: &CurrentUser,
+    id: Uuid,
+    question_id: Uuid,
+    answer: Answer,
+) -> AppResult<()> {
     let attempt = own_attempt(state, user, id).await?;
     if attempt.status != "in_progress" {
         return Err(AppError::conflict("attempt_closed", "this attempt is closed"));
@@ -439,10 +452,8 @@ pub async fn save_answer(state: &AppState, user: &CurrentUser, id: Uuid, questio
 }
 
 pub async fn answer_keys(db: &PgPool, ids: &[Uuid]) -> AppResult<HashMap<Uuid, AnswerKey>> {
-    let rows: Vec<(Uuid, String, Value)> = sqlx::query_as("SELECT id, format, choices FROM questions WHERE id = ANY($1)")
-        .bind(ids)
-        .fetch_all(db)
-        .await?;
+    let rows: Vec<(Uuid, String, Value)> =
+        sqlx::query_as("SELECT id, format, choices FROM questions WHERE id = ANY($1)").bind(ids).fetch_all(db).await?;
     Ok(rows
         .into_iter()
         .map(|(id, format, choices)| {
@@ -538,11 +549,18 @@ pub async fn finalize(
         .await?;
     let date_fmt = state.renderer.raw("date.format").to_string();
     let track_link = state.config.public_url(&format!("/tracks/{}", track.slug));
-    audit::log(&mut **tx, None, "exam.result", Some(attempt.id.to_string()), json!({ "user": attempt.user_id, "track": track.slug, "status": status }))
-        .await?;
+    audit::log(
+        &mut **tx,
+        None,
+        "exam.result",
+        Some(attempt.id.to_string()),
+        json!({ "user": attempt.user_id, "track": track.slug, "status": status }),
+    )
+    .await?;
     match status {
         "passed" => {
-            let purpose = if attempt.purpose == "recertification" { Purpose::Recertification } else { Purpose::Certification };
+            let purpose =
+                if attempt.purpose == "recertification" { Purpose::Recertification } else { Purpose::Certification };
             let previous: Option<(Uuid, Option<DateTime<Utc>>, bool)> = sqlx::query_as(crate::const_sql!(
                 "SELECT c.id, c.expires_at, c.provisional FROM certifications c
                  WHERE c.user_id = $1 AND c.track_id = $2 AND {} ORDER BY c.issued_at DESC LIMIT 1",
@@ -610,7 +628,14 @@ pub async fn finalize(
             .await?;
         }
         _ => {
-            mail::queue_template(&mut **tx, state, &email, "exam_review", json!({ "name": name, "track": track.title })).await?;
+            mail::queue_template(
+                &mut **tx,
+                state,
+                &email,
+                "exam_review",
+                json!({ "name": name, "track": track.title }),
+            )
+            .await?;
         }
     }
     Ok(())

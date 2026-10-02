@@ -99,7 +99,14 @@ pub async fn decide_member(
         json!({ "name": name, "org": org_name, "approved": d.approve, "link": state.config.public_url("/") }),
     )
     .await?;
-    audit::log(&mut *tx, Some(user.id), "membership.decide", Some(member.to_string()), json!({ "org": org, "approve": d.approve })).await?;
+    audit::log(
+        &mut *tx,
+        Some(user.id),
+        "membership.decide",
+        Some(member.to_string()),
+        json!({ "org": org, "approve": d.approve }),
+    )
+    .await?;
     tx.commit().await?;
     Ok(Json(json!({ "ok": true })))
 }
@@ -122,25 +129,41 @@ pub async fn set_member_role(
     if member == user.id && r.org_role != "training_manager" {
         return Err(AppError::conflict("cannot_demote_self", "ask another manager to change your role"));
     }
-    let res = sqlx::query("UPDATE memberships SET org_role = $3 WHERE user_id = $1 AND org_id = $2 AND status = 'approved'")
-        .bind(member)
-        .bind(org)
-        .bind(&r.org_role)
-        .execute(&state.db)
-        .await?;
+    let res =
+        sqlx::query("UPDATE memberships SET org_role = $3 WHERE user_id = $1 AND org_id = $2 AND status = 'approved'")
+            .bind(member)
+            .bind(org)
+            .bind(&r.org_role)
+            .execute(&state.db)
+            .await?;
     if res.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
-    audit::log(&state.db, Some(user.id), "membership.role", Some(member.to_string()), json!({ "org": org, "role": r.org_role })).await?;
+    audit::log(
+        &state.db,
+        Some(user.id),
+        "membership.role",
+        Some(member.to_string()),
+        json!({ "org": org, "role": r.org_role }),
+    )
+    .await?;
     Ok(Json(json!({ "ok": true })))
 }
 
-pub async fn remove_member(State(state): State<AppState>, user: CurrentUser, Path(member): Path<Uuid>) -> AppResult<Json<Value>> {
+pub async fn remove_member(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(member): Path<Uuid>,
+) -> AppResult<Json<Value>> {
     let org = managed(&user)?;
     if member == user.id {
         return Err(AppError::conflict("cannot_remove_self", "leave the organization from your profile"));
     }
-    let res = sqlx::query("DELETE FROM memberships WHERE user_id = $1 AND org_id = $2").bind(member).bind(org).execute(&state.db).await?;
+    let res = sqlx::query("DELETE FROM memberships WHERE user_id = $1 AND org_id = $2")
+        .bind(member)
+        .bind(org)
+        .execute(&state.db)
+        .await?;
     if res.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
@@ -151,7 +174,11 @@ pub async fn remove_member(State(state): State<AppState>, user: CurrentUser, Pat
 pub async fn rotate_join_code(State(state): State<AppState>, user: CurrentUser) -> AppResult<Json<Value>> {
     let org = managed(&user)?;
     let code = new_join_code();
-    sqlx::query("UPDATE organizations SET join_code = $2 WHERE id = $1").bind(org).bind(&code).execute(&state.db).await?;
+    sqlx::query("UPDATE organizations SET join_code = $2 WHERE id = $1")
+        .bind(org)
+        .bind(&code)
+        .execute(&state.db)
+        .await?;
     Ok(Json(json!({ "join_code": code })))
 }
 
@@ -187,7 +214,11 @@ pub async fn list_orgs(State(state): State<AppState>, user: CurrentUser) -> AppR
     Ok(Json(json!(out)))
 }
 
-pub async fn org_detail(State(state): State<AppState>, user: CurrentUser, Path(id): Path<Uuid>) -> AppResult<Json<Value>> {
+pub async fn org_detail(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(id): Path<Uuid>,
+) -> AppResult<Json<Value>> {
     user.require_any(&[Role::ChannelManager, Role::Admin])?;
     Ok(Json(org_overview(&state, id, user.has_role(Role::Admin)).await?))
 }
@@ -211,14 +242,18 @@ pub async fn export_csv(State(state): State<AppState>, user: CurrentUser) -> App
     user.require_any(&[Role::ChannelManager, Role::Admin])?;
     let rows = certified_rows(&state).await?;
     let mut w = csv::Writer::from_writer(Vec::new());
-    w.write_record(["organization_id", "organization", "kind", "track", "valid_certifications"]).map_err(anyhow::Error::from)?;
+    w.write_record(["organization_id", "organization", "kind", "track", "valid_certifications"])
+        .map_err(anyhow::Error::from)?;
     for (id, name, kind, track, count) in rows {
         w.write_record([id, csv_safe(&name), kind, track, count.to_string()]).map_err(anyhow::Error::from)?;
     }
     let body = w.into_inner().map_err(|e| anyhow::anyhow!("{e}"))?;
     audit::log(&state.db, Some(user.id), "export.certified_csv", None, json!({})).await?;
     Ok((
-        [(header::CONTENT_TYPE, "text/csv; charset=utf-8"), (header::CONTENT_DISPOSITION, "attachment; filename=\"certified.csv\"")],
+        [
+            (header::CONTENT_TYPE, "text/csv; charset=utf-8"),
+            (header::CONTENT_DISPOSITION, "attachment; filename=\"certified.csv\""),
+        ],
         body,
     )
         .into_response())
@@ -246,7 +281,9 @@ pub async fn api_certified(State(state): State<AppState>, headers: axum::http::H
     let rows = certified_rows(&state).await?;
     let mut orgs: std::collections::BTreeMap<String, Value> = std::collections::BTreeMap::new();
     for (id, name, kind, track, count) in rows {
-        let e = orgs.entry(id.clone()).or_insert_with(|| json!({ "id": id, "name": name, "kind": kind, "valid_certifications": {} }));
+        let e = orgs
+            .entry(id.clone())
+            .or_insert_with(|| json!({ "id": id, "name": name, "kind": kind, "valid_certifications": {} }));
         e["valid_certifications"][track] = json!(count);
     }
     Ok(Json(json!({ "generated_at": chrono::Utc::now(), "organizations": orgs.into_values().collect::<Vec<_>>() })))

@@ -71,7 +71,11 @@ pub async fn track_detail(
     })))
 }
 
-pub async fn enroll(State(state): State<AppState>, user: CurrentUser, Path(slug): Path<String>) -> AppResult<Json<Value>> {
+pub async fn enroll(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(slug): Path<String>,
+) -> AppResult<Json<Value>> {
     let track = catalog::accessible_track(&state.db, &slug, Some(&user)).await?;
     sqlx::query("INSERT INTO enrollments (user_id, track_id) VALUES ($1, $2) ON CONFLICT DO NOTHING")
         .bind(user.id)
@@ -86,7 +90,12 @@ pub struct Rating {
     rating: i32,
 }
 
-pub async fn rate(State(state): State<AppState>, user: CurrentUser, Path(slug): Path<String>, Json(r): Json<Rating>) -> AppResult<Json<Value>> {
+pub async fn rate(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(slug): Path<String>,
+    Json(r): Json<Rating>,
+) -> AppResult<Json<Value>> {
     if !(1..=5).contains(&r.rating) {
         return Err(AppError::bad_request("invalid_rating", "rating must be 1-5"));
     }
@@ -177,10 +186,11 @@ pub async fn module_detail(
     .bind(m.id)
     .fetch_optional(&state.db)
     .await?;
-    let siblings: Vec<(String, String)> = sqlx::query_as("SELECT slug, title FROM modules WHERE track_id = $1 ORDER BY position")
-        .bind(track.id)
-        .fetch_all(&state.db)
-        .await?;
+    let siblings: Vec<(String, String)> =
+        sqlx::query_as("SELECT slug, title FROM modules WHERE track_id = $1 ORDER BY position")
+            .bind(track.id)
+            .fetch_all(&state.db)
+            .await?;
     let idx = siblings.iter().position(|(s, _)| *s == m.slug);
     let prev = idx.and_then(|i| i.checked_sub(1)).and_then(|i| siblings.get(i));
     let next = idx.and_then(|i| siblings.get(i + 1));
@@ -271,16 +281,21 @@ pub struct QuizSubmission {
 }
 
 /// Grades a set of quiz questions and returns the correction with explanations.
-async fn grade_quiz(state: &AppState, question_ids: &[Uuid], answers: &BTreeMap<Uuid, Answer>) -> AppResult<(u32, Vec<Value>)> {
+async fn grade_quiz(
+    state: &AppState,
+    question_ids: &[Uuid],
+    answers: &BTreeMap<Uuid, Answer>,
+) -> AppResult<(u32, Vec<Value>)> {
     let keys = attempts::answer_keys(&state.db, question_ids).await?;
-    let explanations: HashMap<Uuid, (String, Value)> =
-        sqlx::query_as::<_, (Uuid, String, Value)>("SELECT id, explanation_md, choices FROM questions WHERE id = ANY($1)")
-            .bind(question_ids)
-            .fetch_all(&state.db)
-            .await?
-            .into_iter()
-            .map(|(id, e, c)| (id, (e, c)))
-            .collect();
+    let explanations: HashMap<Uuid, (String, Value)> = sqlx::query_as::<_, (Uuid, String, Value)>(
+        "SELECT id, explanation_md, choices FROM questions WHERE id = ANY($1)",
+    )
+    .bind(question_ids)
+    .fetch_all(&state.db)
+    .await?
+    .into_iter()
+    .map(|(id, e, c)| (id, (e, c)))
+    .collect();
     let mut correct = 0u32;
     let mut details = Vec::new();
     for id in question_ids {
@@ -301,12 +316,7 @@ async fn grade_quiz(state: &AppState, question_ids: &[Uuid], answers: &BTreeMap<
 fn correct_choice_ids(choices: &Value) -> Vec<&str> {
     choices
         .as_array()
-        .map(|a| {
-            a.iter()
-                .filter(|c| c["correct"].as_bool() == Some(true))
-                .filter_map(|c| c["id"].as_str())
-                .collect()
-        })
+        .map(|a| a.iter().filter(|c| c["correct"].as_bool() == Some(true)).filter_map(|c| c["id"].as_str()).collect())
         .unwrap_or_default()
 }
 
@@ -317,10 +327,11 @@ pub async fn submit_module_quiz(
     Json(req): Json<QuizSubmission>,
 ) -> AppResult<Json<Value>> {
     let (m, track) = module_in_track(&state, &user, id).await?;
-    let ids: Vec<Uuid> = sqlx::query_scalar("SELECT id FROM questions WHERE module_id = $1 AND pool = 'quiz' AND active")
-        .bind(m.id)
-        .fetch_all(&state.db)
-        .await?;
+    let ids: Vec<Uuid> =
+        sqlx::query_scalar("SELECT id FROM questions WHERE module_id = $1 AND pool = 'quiz' AND active")
+            .bind(m.id)
+            .fetch_all(&state.db)
+            .await?;
     if ids.is_empty() {
         return Err(AppError::bad_request("no_quiz", "this module has no quiz"));
     }
@@ -415,10 +426,8 @@ pub async fn scenario_detail(
 }
 
 async fn learning_scenario(state: &AppState, user: &CurrentUser, id: Uuid) -> AppResult<Uuid> {
-    let (track_id, exam_only): (Uuid, bool) = sqlx::query_as("SELECT track_id, exam_only FROM scenarios WHERE id = $1")
-        .bind(id)
-        .fetch_one(&state.db)
-        .await?;
+    let (track_id, exam_only): (Uuid, bool) =
+        sqlx::query_as("SELECT track_id, exam_only FROM scenarios WHERE id = $1").bind(id).fetch_one(&state.db).await?;
     let track = catalog::load_track_by_id(&state.db, track_id).await?;
     if exam_only || !catalog::can_access(&track, Some(user)) {
         return Err(AppError::NotFound);
@@ -459,11 +468,13 @@ pub async fn scenario_check(
     Json(req): Json<QuizSubmission>,
 ) -> AppResult<Json<Value>> {
     learning_scenario(&state, &user, id).await?;
-    let ids: Vec<Uuid> = sqlx::query_scalar("SELECT id FROM questions WHERE scenario_id = $1 AND pool = 'quiz' AND active")
-        .bind(id)
-        .fetch_all(&state.db)
-        .await?;
-    let (score, details) = if ids.is_empty() { (100, Vec::new()) } else { grade_quiz(&state, &ids, &req.answers).await? };
+    let ids: Vec<Uuid> =
+        sqlx::query_scalar("SELECT id FROM questions WHERE scenario_id = $1 AND pool = 'quiz' AND active")
+            .bind(id)
+            .fetch_all(&state.db)
+            .await?;
+    let (score, details) =
+        if ids.is_empty() { (100, Vec::new()) } else { grade_quiz(&state, &ids, &req.answers).await? };
     let passed = score == 100;
     sqlx::query(
         "INSERT INTO scenario_progress (user_id, scenario_id, current_step, completed_at) VALUES ($1, $2, 0, CASE WHEN $3 THEN now() END)

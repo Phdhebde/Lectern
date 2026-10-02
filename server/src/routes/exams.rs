@@ -22,7 +22,11 @@ use crate::render::markdown;
 use crate::routes::learning::scenario_steps;
 use crate::state::AppState;
 
-pub async fn start(State(state): State<AppState>, user: CurrentUser, Path(slug): Path<String>) -> AppResult<Json<Value>> {
+pub async fn start(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(slug): Path<String>,
+) -> AppResult<Json<Value>> {
     let track = catalog::accessible_track(&state.db, &slug, Some(&user)).await?;
     let id = attempts::start(&state, &user, &track).await?;
     Ok(Json(json!({ "attempt_id": id })))
@@ -93,10 +97,11 @@ async fn attempt_view(state: &AppState, attempt: &AttemptRow, include_keys: bool
             .collect();
         let mut scenarios = Vec::new();
         for sid in &s.scenarios {
-            let (title, context): (String, String) = sqlx::query_as("SELECT title, context_md FROM scenarios WHERE id = $1")
-                .bind(sid)
-                .fetch_one(&state.db)
-                .await?;
+            let (title, context): (String, String) =
+                sqlx::query_as("SELECT title, context_md FROM scenarios WHERE id = $1")
+                    .bind(sid)
+                    .fetch_one(&state.db)
+                    .await?;
             scenarios.push(json!({
                 "id": sid,
                 "title": title,
@@ -123,7 +128,11 @@ async fn attempt_view(state: &AppState, attempt: &AttemptRow, include_keys: bool
     }))
 }
 
-pub async fn get_attempt(State(state): State<AppState>, user: CurrentUser, Path(id): Path<Uuid>) -> AppResult<Json<Value>> {
+pub async fn get_attempt(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(id): Path<Uuid>,
+) -> AppResult<Json<Value>> {
     let attempt = attempts::own_attempt(&state, &user, id).await?;
     Ok(Json(attempt_view(&state, &attempt, false).await?))
 }
@@ -236,7 +245,11 @@ pub async fn pending_reviews(State(state): State<AppState>, user: CurrentUser) -
     Ok(Json(rows.unwrap_or(json!([]))))
 }
 
-pub async fn review_detail(State(state): State<AppState>, user: CurrentUser, Path(id): Path<Uuid>) -> AppResult<Json<Value>> {
+pub async fn review_detail(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    Path(id): Path<Uuid>,
+) -> AppResult<Json<Value>> {
     user.require(Role::Trainer)?;
     let attempt = attempts::load_attempt(&state.db, id).await?;
     let mut view = attempt_view(&state, &attempt, true).await?;
@@ -285,7 +298,8 @@ pub async fn submit_review(
     if attempt.user_id == user.id {
         return Err(AppError::Forbidden("cannot_review_own_attempt"));
     }
-    let review = json!({ "decision": req.decision, "comment": req.comment, "grid": req.grid, "reviewed_at": Utc::now() });
+    let review =
+        json!({ "decision": req.decision, "comment": req.comment, "grid": req.grid, "reviewed_at": Utc::now() });
     sqlx::query("UPDATE exam_attempts SET status = $2, review = $3, reviewer_id = $4 WHERE id = $1")
         .bind(id)
         .bind(status)
@@ -295,7 +309,8 @@ pub async fn submit_review(
         .await?;
     let track = catalog::load_track_by_id(&state.db, attempt.track_id).await?;
     attempts::finalize(&state, &mut tx, &attempt, &track, status).await?;
-    audit::log(&mut *tx, Some(user.id), "exam.review", Some(id.to_string()), json!({ "decision": req.decision })).await?;
+    audit::log(&mut *tx, Some(user.id), "exam.review", Some(id.to_string()), json!({ "decision": req.decision }))
+        .await?;
     tx.commit().await?;
     Ok(Json(json!({ "ok": true, "status": status })))
 }
