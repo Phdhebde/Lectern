@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { api } from "../../lib/api";
 import { useAsync } from "../../lib/hooks";
 import { formatDateTime, t } from "../../lib/i18n";
@@ -9,6 +9,7 @@ import { Badge, Card, ErrorBox, Loading } from "../../components/ui";
 const TABS = ["content", "organizations", "users", "levels", "stats", "tokens", "audit", "settings"] as const;
 type Tab = (typeof TABS)[number];
 const AUTHOR_TABS: Tab[] = ["content", "stats"];
+const SLUG = /^[a-z0-9][a-z0-9-]{0,79}$/;
 
 function useAction() {
   const [error, setError] = useState<unknown>(null);
@@ -79,6 +80,7 @@ function ContentTab({ isAdmin }: { isAdmin: boolean }) {
   const { data, error, loading, reload } = useAsync(() => api.get<TrackRow[]>("/api/admin/tracks"), []);
   const { run, feedback } = useAction();
   const [newSlug, setNewSlug] = useState("");
+  const navigate = useNavigate();
 
   const importPack = async (file: File) => {
     const ok = await run(async () => {
@@ -147,7 +149,9 @@ function ContentTab({ isAdmin }: { isAdmin: boolean }) {
         className="inline-form"
         onSubmit={(e) => {
           e.preventDefault();
-          location.assign(`/admin/tracks/${newSlug}?new=1`);
+          // Same rule as the server: only lowercase slugs ever reach the URL.
+          if (!SLUG.test(newSlug)) return;
+          navigate(`/admin/tracks/${encodeURIComponent(newSlug)}?new=1`);
         }}
       >
         <input placeholder={t("admin.new_track_slug")} pattern="[a-z0-9][a-z0-9-]*" value={newSlug} onChange={(e) => setNewSlug(e.target.value)} required />
