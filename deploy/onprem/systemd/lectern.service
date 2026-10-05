@@ -1,0 +1,52 @@
+# Lectern API server (also serves the front-end when server.static_dir points to it).
+# Install: /etc/systemd/system/lectern.service, then `systemctl enable --now lectern`.
+# See docs/deploy-onprem.md.
+[Unit]
+Description=Lectern academy server
+Documentation=https://github.com/Phdhebde/Lectern/blob/main/docs/deploy-onprem.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lectern
+Group=lectern
+Environment=LECTERN_CONFIG=/etc/lectern/lectern.toml
+Environment=LECTERN_LOG_FORMAT=json
+# DATABASE_URL and the other secrets (mode 0640, owner root:lectern).
+EnvironmentFile=/etc/lectern/lectern.env
+ExecStart=/usr/local/bin/lectern serve
+Restart=on-failure
+RestartSec=5s
+
+# Uploaded assets. Created with the right owner by systemd.
+StateDirectory=lectern
+StateDirectoryMode=0750
+
+# Hardening: read-only system, no privileges, only the state directory is writable.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

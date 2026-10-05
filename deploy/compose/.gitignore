@@ -1,0 +1,7 @@
+# Instance files, created from the *.example files.
+.env
+lectern.env
+lectern.toml
+branding/
+certs/
+backups/

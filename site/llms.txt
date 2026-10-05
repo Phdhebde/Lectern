@@ -25,6 +25,8 @@
 - [content-pack](https://github.com/Phdhebde/Lectern/blob/main/docs/content-pack.md)
 - [certification](https://github.com/Phdhebde/Lectern/blob/main/docs/certification.md)
 - [operations](https://github.com/Phdhebde/Lectern/blob/main/docs/operations.md)
+- [deploy-compose](https://github.com/Phdhebde/Lectern/blob/main/docs/deploy-compose.md)
+- [deploy-onprem](https://github.com/Phdhebde/Lectern/blob/main/docs/deploy-onprem.md)
 - [security](https://github.com/Phdhebde/Lectern/blob/main/docs/security.md)
 - [privacy](https://github.com/Phdhebde/Lectern/blob/main/docs/privacy.md)
 - [api](https://github.com/Phdhebde/Lectern/blob/main/docs/api.md)

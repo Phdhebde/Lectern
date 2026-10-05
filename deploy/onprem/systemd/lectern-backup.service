@@ -1,0 +1,20 @@
+# Daily backup of the database and uploaded assets (triggered by lectern-backup.timer).
+[Unit]
+Description=Lectern backup (database dump + assets)
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=lectern
+Group=lectern
+EnvironmentFile=/etc/lectern/lectern.env
+Environment=LECTERN_DATA_DIR=/var/lib/lectern/data
+Environment=LECTERN_BACKUP_DIR=/var/backups/lectern
+Environment=LECTERN_BACKUP_RETENTION_DAYS=14
+ExecStart=/usr/local/bin/lectern-backup
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/backups/lectern
+UMask=0077

@@ -1,0 +1,44 @@
+# Instance configuration for the Docker Compose stack. Copy to lectern.toml and adapt.
+# Every key is documented in docs/configuration.md and config/lectern.example.toml.
+# public_url, the database URL and the secrets come from the environment (.env, lectern.env).
+# Paths (static_dir, data_dir, branding_dir) are set by the image: do not override them.
+
+[instance]
+name = "Example Academy"
+product_name = "Example"
+product_major_version = "1"
+contact_email = "academy@example.com"
+legal_notice_url = "https://example.com/legal"
+privacy_policy_url = "https://example.com/privacy"
+documentation_url = "https://docs.example.com"
+logo = "logo.svg"
+favicon = "favicon.svg"
+default_locale = "fr"
+
+[theme.tokens]
+color-primary = "#2f5bea"
+color-accent = "#f59e0b"
+
+[server]
+# HTTPS in production: HSTS and __Host- session cookie.
+secure_cookies = true
+# Origins serving videos, added to the CSP.
+media_origins = []
+
+[auth]
+email_login = true
+require_mfa_for = ["trainer", "admin"]
+
+# [auth.oidc]
+# label = "Company account"
+# issuer_url = "https://sso.example.com/realms/academy"
+# client_id = "lectern"
+# mfa_acr_values = ["gold"]
+# roles_claim = "resource_access.lectern.roles"
+
+[mail]
+# from = "Example Academy <academy@example.com>"
+
+[certificates]
+signatory_name = "Jane Doe"
+signatory_title = "Head of Academy"

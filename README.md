@@ -31,7 +31,7 @@ web/      React + TypeScript single-page app (Vite)
 server/   Rust API server (axum, PostgreSQL via sqlx), serves the built web app
 config/   Example instance configuration
 examples/ Fictional demo content pack and branding directory
-deploy/   Kubernetes manifests (Kustomize) for K3s / GitOps
+deploy/   Docker Compose stack, on-premises files (systemd, nginx), Kubernetes manifests
 docs/     Documentation
 ```
 
@@ -74,6 +74,7 @@ cd web && npm run lint && npm run typecheck && npm test
 - [Content pack format](docs/content-pack.md)
 - [Exams, certifications and requirements](docs/certification.md)
 - [Operations: deployment, backups, monitoring](docs/operations.md)
+- Deployment: [Docker Compose](docs/deploy-compose.md) or [on-premises, component by component](docs/deploy-onprem.md)
 - [Security](docs/security.md) and [personal data](docs/privacy.md)
 - [HTTP API](docs/api.md)
 

@@ -1,4 +1,4 @@
-# Local development stack: PostgreSQL + a mail catcher.
+# Local development stack: PostgreSQL + a mail catcher (production: deploy/compose, see docs/deploy-compose.md).
 #   docker compose up -d
 #   then run the server with `cargo run -p lectern-server -- --config config/lectern.example.toml`
 #   and the front-end with `npm run dev` in web/.
