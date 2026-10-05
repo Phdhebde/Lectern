@@ -18,8 +18,10 @@ services:
       POSTGRES_DB: lectern
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_INITDB_ARGS: --encoding=UTF8 --auth-host=scram-sha-256
+    # PostgreSQL 18+ images keep data in /var/lib/postgresql/<major>/docker: mount the parent
+    # directory (a mount on .../data makes the container refuse to start).
     volumes:
-      - db:/var/lib/postgresql/data
+      - db:/var/lib/postgresql
     # Not published: only reachable from the stack's network.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U lectern -d lectern"]

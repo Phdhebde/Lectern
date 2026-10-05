@@ -4,7 +4,7 @@ The whole stack on one host, from [`deploy/compose`](../deploy/compose):
 
 | Service | Role | Started |
 | --- | --- | --- |
-| `db` | PostgreSQL 16, data in the `db` volume, not published | always |
+| `db` | PostgreSQL 18, data in the `db` volume (mounted on `/var/lib/postgresql`), not published | always |
 | `lectern` | API server + front-end (the repository's `Dockerfile`), uploaded assets in the `data` volume, published on `127.0.0.1:8080` only | always |
 | `proxy` | nginx: TLS, HTTP→HTTPS redirect, rate limits, upload size | profile `proxy` (on by default in `.env.example`) |
 | `backup` | `pg_dump` + assets tarball into `./backups`, kept 14 days | on demand: `docker compose run --rm backup` |
@@ -83,7 +83,7 @@ Copy `backups/` off-site. Restore (the volume is named after the Compose project
 docker compose stop lectern
 docker compose exec -T db pg_restore --clean --no-owner -U lectern -d lectern < backups/db-YYYYMMDD-HHMMSS.dump
 docker run --rm --user 65532:65532 -v lectern_data:/data -v "$PWD/backups:/backups:ro" \
-  postgres:16 tar -C /data -xzf /backups/assets-YYYYMMDD-HHMMSS.tar.gz
+  postgres:18 tar -C /data -xzf /backups/assets-YYYYMMDD-HHMMSS.tar.gz
 docker compose start lectern
 ```
 
@@ -96,6 +96,11 @@ git pull                                   # or change LECTERN_IMAGE
 docker compose run --rm backup
 docker compose up -d --build               # migrations run at start-up
 ```
+
+A new PostgreSQL **major** version (e.g. a Dependabot update from 18 to 19) does not start
+on the old data directory: back up, stop the stack, remove the `lectern_db` volume, start
+`db` alone, restore the dump (see *Backups*), then start the rest. Minor versions and
+digest updates need nothing special.
 
 ## Hardening applied
 

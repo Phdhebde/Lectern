@@ -22,6 +22,8 @@ Thanks for helping! Every change is reviewed before merge, external contribution
    cargo fmt --all --check && cargo clippy --all-targets -- -D warnings && cargo test
    cd web && npm run lint && npm run typecheck && npm test && npm run build
    ```
+   If you changed the README or `docs/`, regenerate the project website and commit `site/`:
+   `python3 scripts/build-site.py && python3 scripts/check-site.py`.
 4. A maintainer reviews; security-sensitive changes get a second review.
 
 Database changes are new files in `server/migrations/` (never edit a released migration).

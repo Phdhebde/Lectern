@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- PostgreSQL 14+ (16 recommended), UTF-8.
+- PostgreSQL 14 or later, UTF-8 (CI tests on 16; the Docker Compose stack ships 18).
 - An SMTP relay for e-mails (sign-in links, alerts).
 - Optionally an OpenID Connect provider (e.g. Keycloak) — recommended, and required to
   grant MFA-protected roles (trainer, admin).
