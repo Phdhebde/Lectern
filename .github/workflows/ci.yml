@@ -95,6 +95,21 @@ jobs:
         env:
           BRAND_DENYLIST: ${{ vars.BRAND_DENYLIST }}
 
+  deploy-files:
+    # Docker Compose stack and on-premises scripts stay valid.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Compose file
+        working-directory: deploy/compose
+        run: |
+          cp .env.example .env && cp lectern.env.example lectern.env
+          docker compose --profile proxy --profile backup config --quiet
+      - name: Shell scripts
+        run: shellcheck scripts/build-release.sh deploy/onprem/lectern-backup.sh
+
   image:
     needs: [server, web]
     runs-on: ubuntu-latest

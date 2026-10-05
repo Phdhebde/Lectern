@@ -1,0 +1,49 @@
+# /etc/lectern/lectern.toml — on-premises instance configuration.
+# Every key is documented in docs/configuration.md and config/lectern.example.toml.
+# Secrets come from /etc/lectern/lectern.env.
+
+[instance]
+name = "Example Academy"
+product_name = "Example"
+product_major_version = "1"
+public_url = "https://academy.example.com"
+contact_email = "academy@example.com"
+legal_notice_url = "https://example.com/legal"
+privacy_policy_url = "https://example.com/privacy"
+documentation_url = "https://docs.example.com"
+logo = "logo.svg"
+favicon = "favicon.svg"
+default_locale = "fr"
+
+[theme.tokens]
+color-primary = "#2f5bea"
+color-accent = "#f59e0b"
+
+[server]
+# Loopback only: nginx is in front.
+bind = "127.0.0.1:8080"
+# Built front-end. Used when the API serves it (option A); ignored when nginx does (option B).
+static_dir = "/var/www/lectern/current"
+data_dir = "/var/lib/lectern/data"
+branding_dir = "/etc/lectern/branding"
+secure_cookies = true
+# Origins serving videos, added to the CSP (also copy them into the nginx CSP in option B).
+media_origins = []
+
+[auth]
+email_login = true
+require_mfa_for = ["trainer", "admin"]
+
+# [auth.oidc]
+# label = "Company account"
+# issuer_url = "https://sso.example.com/realms/academy"
+# client_id = "lectern"
+# mfa_acr_values = ["gold"]
+# roles_claim = "resource_access.lectern.roles"
+
+[mail]
+# from = "Example Academy <academy@example.com>"
+
+[certificates]
+signatory_name = "Jane Doe"
+signatory_title = "Head of Academy"

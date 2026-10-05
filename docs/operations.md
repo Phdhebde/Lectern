@@ -7,6 +7,14 @@ distroless base (no shell), running as the unprivileged user 65532 with a read-o
 filesystem. Base images are pinned by digest. Configuration comes from a mounted
 file (`LECTERN_CONFIG`) and environment variables.
 
+## Deployment options
+
+| Mode | Where | Guide |
+| --- | --- | --- |
+| Docker Compose | One host: PostgreSQL, Lectern, nginx (TLS) and backups in containers | [deploy-compose](deploy-compose.md), `deploy/compose` |
+| On-premises, component by component | PostgreSQL, the API (systemd) and the front-end (nginx) on your own servers, without containers | [deploy-onprem](deploy-onprem.md), `deploy/onprem`, `scripts/build-release.sh` |
+| Kubernetes | K3s with GitOps (below) | `deploy/k8s` |
+
 ## Kubernetes (K3s, GitOps)
 
 `deploy/k8s/base` is a Kustomize base: Deployment (hardened security context, probes),
@@ -24,9 +32,9 @@ Migrations run automatically at start-up (`lectern serve`), inside a transaction
 
 ## Backups
 
-The `lectern-backup` CronJob runs daily at 02:17: `pg_dump` (custom format) and a tarball
+On Kubernetes, the `lectern-backup` CronJob runs daily at 02:17: `pg_dump` (custom format) and a tarball
 of the assets directory, kept 14 days on the `lectern-backups` volume. Copy that volume
-off-site with your usual tooling. Restore:
+off-site with your usual tooling (Compose and on-premises: see their guides). Restore:
 
 ```sh
 pg_restore --clean --no-owner -d "$DATABASE_URL" db-YYYYMMDD-HHMMSS.dump
@@ -51,7 +59,7 @@ served from that origin.
 
 ## Upgrades
 
-Roll out a new image tag through GitOps. Schema migrations are additive within a minor
+Roll out a new image tag through GitOps (Compose and on-premises: see their guides). Schema migrations are additive within a minor
 version. Read the release notes before a major version.
 
 ## Project website

@@ -376,7 +376,7 @@ en = C["en"]
 facts = "\n".join(f"- {k}: {v}" for k, v in en["facts"])
 features = "\n".join(f"- {t}: " + "; ".join(i) for t, i in en["features"])
 faq = "\n\n".join(f"### {q}\n{a}" for q, a in en["faq"])
-DOCS = ["architecture", "configuration", "customization", "content-pack", "certification", "operations", "security", "privacy", "api"]
+DOCS = ["architecture", "configuration", "customization", "content-pack", "certification", "operations", "deploy-compose", "deploy-onprem", "security", "privacy", "api"]
 write("llms.txt", f"""# Lectern
 
 > {en['summary']}
