@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://phdhebde.github.io/Lectern/</loc>
+    <lastmod>2026-10-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://phdhebde.github.io/Lectern/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phdhebde.github.io/Lectern/en/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phdhebde.github.io/Lectern/"/>
+    <image:image><image:loc>https://phdhebde.github.io/Lectern/assets/img/scenario.webp</image:loc></image:image>
+    <image:image><image:loc>https://phdhebde.github.io/Lectern/assets/img/exam.webp</image:loc></image:image>
+    <image:image><image:loc>https://phdhebde.github.io/Lectern/assets/img/certifications.webp</image:loc></image:image>
+    <image:image><image:loc>https://phdhebde.github.io/Lectern/assets/img/organization.webp</image:loc></image:image>
+    <image:image><image:loc>https://phdhebde.github.io/Lectern/assets/img/verification.webp</image:loc></image:image>
+    <image:image><image:loc>https://phdhebde.github.io/Lectern/assets/img/editor.webp</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://phdhebde.github.io/Lectern/en/</loc>
+    <lastmod>2026-10-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://phdhebde.github.io/Lectern/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://phdhebde.github.io/Lectern/en/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://phdhebde.github.io/Lectern/"/>
+    <image:image><image:loc>https://phdhebde.github.io/Lectern/assets/img/scenario.webp</image:loc></image:image>
+    <image:image><image:loc>https://phdhebde.github.io/Lectern/assets/img/exam.webp</image:loc></image:image>
+    <image:image><image:loc>https://phdhebde.github.io/Lectern/assets/img/certifications.webp</image:loc></image:image>
+    <image:image><image:loc>https://phdhebde.github.io/Lectern/assets/img/organization.webp</image:loc></image:image>
+    <image:image><image:loc>https://phdhebde.github.io/Lectern/assets/img/verification.webp</image:loc></image:image>
+    <image:image><image:loc>https://phdhebde.github.io/Lectern/assets/img/editor.webp</image:loc></image:image>
+  </url>
+</urlset>

@@ -1,0 +1,877 @@
+# Lectern — full documentation
+
+Source: https://github.com/Phdhebde/Lectern
+Generated: 2026-10-05
+
+
+---
+
+<!-- README.md -->
+
+# Lectern
+
+White-label academy for software vendors: train and certify partners and customers with
+courses, hands-on scenarios, exams and verifiable badges.
+
+**Website:** <https://phdhebde.github.io/Lectern/> (français) · <https://phdhebde.github.io/Lectern/en/> (English)
+
+One instance = one brand. Everything a learner sees — name, colours, fonts, logo, texts,
+e-mails, certificates, badges — comes from the instance configuration. The platform ships
+without any content: tracks, scenarios and question banks are imported as a
+[content pack](docs/content-pack.md).
+
+## Features
+
+| Area | What you get |
+| --- | --- |
+| Accounts | Passwordless e-mail sign-in, OpenID Connect (e.g. Keycloak) with MFA detection, organizations (partner / customer / individual) joined with a code and approved by a training manager, platform roles (admin, trainer, channel manager) |
+| Catalog | Tracks with audiences (public / partner / customer), prerequisites, modules (video, recap sheet, attachments, quiz with correction), resume where you left off |
+| Hands-on scenarios | Step-by-step reader with annotated screenshots (boxes, arrows, numbered markers), expected results, pitfalls, verification questions |
+| Exams | Randomized draw from question banks (minimum bank size enforced), shuffled answers, timed sections, case studies that differ between attempts, attempts policy (free attempts, cooldown, extra credits), one exam at a time, written answers graded by an evaluator |
+| Credentials | Certifications with expiry, recertification window, PDF certificate, badge (SVG/PNG), public verification page, Open Badges 2.0 hosted assertions, LinkedIn "add to profile" |
+| Alerts | E-mails at 90/30/7 days before expiry to the learner and their training manager, sign-in links, results, membership decisions, new content |
+| Organizations | Training manager dashboard (members, progress, valid certifications, gap with requirement levels), channel manager view, CSV export and API for the partner portal |
+| Administration | Content editor (tracks, modules, scenarios with visual annotation editor, questions), pack import/export, users and roles, extra attempts, statistics (completion, pass rate per question with anomaly flag), audit log, major-version declaration |
+| Privacy | Data export and account deletion from the profile, private verification pages, anonymous per-question statistics |
+
+## Architecture
+
+```
+web/      React + TypeScript single-page app (Vite)
+server/   Rust API server (axum, PostgreSQL via sqlx), serves the built web app
+config/   Example instance configuration
+examples/ Fictional demo content pack and branding directory
+deploy/   Kubernetes manifests (Kustomize) for K3s / GitOps
+docs/     Documentation
+```
+
+See [docs/architecture.md](docs/architecture.md).
+
+## Quick start (development)
+
+Requirements: Rust (stable), Node.js 22, PostgreSQL 16 (or `docker compose up -d`).
+
+```sh
+# 1. Database
+docker compose up -d db          # or any local PostgreSQL
+export DATABASE_URL=postgres://lectern:lectern@localhost/lectern
+
+# 2. Demo content and an administrator
+cargo run -p lectern-server -- --config config/lectern.example.toml import-pack examples/demo-pack
+cargo run -p lectern-server -- --config config/lectern.example.toml grant-role you@example.com admin
+
+# 3. Server (http://localhost:8080). MFA is not available with e-mail sign-in, so relax it locally:
+LECTERN__AUTH__REQUIRE_MFA_FOR='[]' LECTERN__SERVER__BRANDING_DIR=examples/branding \
+  cargo run -p lectern-server -- --config config/lectern.example.toml
+
+# 4. Front-end with hot reload (http://localhost:5173, proxies the API)
+cd web && npm install && npm run dev
+```
+
+Without SMTP configuration, e-mails (including sign-in links) are printed in the server log.
+
+## Tests
+
+```sh
+cargo test                      # unit tests + API tests (needs DATABASE_URL)
+cd web && npm run lint && npm run typecheck && npm test
+```
+
+## Documentation
+
+- [Installation and configuration](docs/configuration.md)
+- [Customization (theme, texts, e-mails, certificates, badges)](docs/customization.md)
+- [Content pack format](docs/content-pack.md)
+- [Exams, certifications and requirements](docs/certification.md)
+- [Operations: deployment, backups, monitoring](docs/operations.md)
+- [Security](docs/security.md) and [personal data](docs/privacy.md)
+- [HTTP API](docs/api.md)
+
+## License
+
+See [LICENSE](LICENSE). Security issues: see [SECURITY.md](SECURITY.md).
+
+
+---
+
+<!-- docs/architecture.md -->
+
+# Architecture
+
+```
+            browser (React SPA, same origin)
+                     │  HTTPS, session cookie + CSRF header
+                     ▼
+┌──────────────────────────────────────────────┐
+│ lectern (Rust, axum)                          │
+│  /api/*        JSON API                       │
+│  /auth/oidc/*  OpenID Connect redirects       │──── OIDC provider (Keycloak…)
+│  /verify/*     public verification pages      │
+│  /ob/*         Open Badges documents          │
+│  /theme.css    design tokens                  │
+│  /branding/*   logo, fonts (instance files)   │
+│  /*            built SPA (web/dist)           │
+│  background:   e-mail outbox worker,          │──── SMTP
+│                expiry alerts, exam timeouts   │
+└──────────────┬───────────────────────────────┘
+               │ sqlx
+               ▼
+          PostgreSQL           data dir: uploaded assets (content-addressed)
+```
+
+## Choices
+
+- **Rust + axum + sqlx** for the server: memory safety, a small attack surface, a single
+  static binary. Queries are plain SQL with bound parameters; dynamic SQL is only
+  assembled from compile-time constants (`const_sql!`).
+- **React + TypeScript (Vite)** for the front-end, served by the server from the same
+  origin: no CORS, strict CSP (`script-src 'self'`, no inline script or style).
+- **One process** runs the API and the background jobs. Jobs are safe on several replicas
+  (row locks with `SKIP LOCKED`, idempotent alerts), but uploaded assets live on a
+  `ReadWriteOnce` volume, so the default deployment uses one replica.
+- **Transactional outbox** for e-mails: a result and its notification are committed
+  together; a worker delivers with retries and backoff.
+- **No third-party runtime dependency** for learners: fonts, logo, badges and certificates
+  are served by the instance; videos come from storage you control (MP4 or HLS).
+
+## Code map
+
+| Path | Role |
+| --- | --- |
+| `server/src/config.rs` | Instance configuration (TOML + `LECTERN__…` environment overrides) |
+| `server/src/theme.rs` | Design tokens → `/theme.css` |
+| `server/src/auth/` | Sessions, CSRF, e-mail links, OIDC |
+| `server/src/domain/exam.rs` | Pure exam rules: paper draw, eligibility, grading (unit-tested) |
+| `server/src/domain/attempts.rs` | Exam lifecycle in the database |
+| `server/src/domain/certs.rs` | Certifications, validity, requirement levels |
+| `server/src/credentials.rs` | Badge SVG/PNG, PDF certificate, Open Badges JSON |
+| `server/src/pack.rs` | Content pack parsing, import and export |
+| `server/src/jobs.rs` | Expiry alerts, overdue exam sections, housekeeping |
+| `server/src/routes/` | HTTP handlers |
+| `server/migrations/` | Database schema |
+| `web/src/pages/` | Screens; `web/src/i18n/` translations |
+
+## Data model (main tables)
+
+`organizations`, `users`, `memberships` (one organization per user, approved by a
+training manager), `user_roles` (platform roles), `tracks` → `modules`, `scenarios` →
+`scenario_steps`, `questions` (pools quiz/exam/recert/case), progress tables,
+`exam_attempts` (frozen paper, answers, per-section results), `attempt_credits`,
+`certifications` (expiry, superseded/revoked), `requirement_levels`, `email_outbox`,
+`audit_log`.
+
+
+---
+
+<!-- docs/configuration.md -->
+
+# Installation and configuration
+
+## Requirements
+
+- PostgreSQL 14+ (16 recommended), UTF-8.
+- An SMTP relay for e-mails (sign-in links, alerts).
+- Optionally an OpenID Connect provider (e.g. Keycloak) — recommended, and required to
+  grant MFA-protected roles (trainer, admin).
+- A volume for uploaded assets (screenshots, attachments).
+- Storage serving videos (object storage or a streaming server; MP4 or HLS).
+
+## Configuration file
+
+One TOML file per instance (see [`config/lectern.example.toml`](../config/lectern.example.toml)),
+passed with `--config` or `LECTERN_CONFIG`. Every key can be overridden by an environment
+variable `LECTERN__<SECTION>__<KEY>` (double underscores; values parsed as TOML when
+possible), e.g. `LECTERN__AUTH__SESSION_HOURS=8`. `DATABASE_URL` sets `database.url`.
+
+**Secrets never go in the file:** `DATABASE_URL`, `LECTERN__AUTH__OIDC__CLIENT_SECRET`,
+`LECTERN__MAIL__SMTP_URL`.
+
+| Section | Key | Meaning |
+| --- | --- | --- |
+| `instance` | `name`, `product_name` | Academy name; name of the product being taught (texts) |
+| | `public_url` | Absolute URL without trailing slash (links, badges, CSRF origin check) |
+| | `product_major_version` | Recorded on certifications (see [certification](certification.md)) |
+| | `contact_email`, `legal_notice_url`, `privacy_policy_url`, `documentation_url` | Footer and e-mails; modules' `doc_url` are relative to `documentation_url` |
+| | `logo`, `favicon` | Files in the branding directory |
+| | `default_locale` | `fr` or `en` |
+| `theme.tokens` | `color-…`, `radius`, `font-…` | Design tokens, see [customization](customization.md) |
+| `theme.fonts` | `family`, `src`, `weight`, `style` | Self-hosted web fonts |
+| `server` | `bind` | Listen address (default `0.0.0.0:8080`) |
+| | `static_dir`, `data_dir`, `branding_dir` | Built front-end, uploaded assets, branding files |
+| | `secure_cookies` | `true` in production (HTTPS): HSTS and `__Host-` session cookie. Session cookies are always `Secure`; for development use `http://localhost` |
+| | `media_origins` | Origins serving videos, added to the CSP |
+| | `max_upload_mb` | Upload limit (default 50) |
+| `auth` | `email_login` | Passwordless e-mail sign-in |
+| | `session_hours` | Session lifetime (default 12) |
+| | `require_mfa_for` | Roles that need an MFA session (default trainer, admin) |
+| `auth.oidc` | `issuer_url`, `client_id`, `client_secret`, `scopes`, `label` | OIDC client (authorization code + PKCE). Redirect URI: `<public_url>/auth/oidc/callback` |
+| | `mfa_acr_values`, `mfa_amr_values` | ID-token `acr`/`amr` values meaning MFA |
+| | `roles_claim` | Dotted path of a claim with platform roles, e.g. `resource_access.lectern.roles`; when set, roles are synchronized at each sign-in |
+| `mail` | `from`, `smtp_url` | `smtps://user:pass@host:465` or `smtp://host:587` (STARTTLS). Unset: e-mails are logged |
+| `certificates` | `font`, `font_bold`, `logo`, `signature_image`, `signatory_name`, `signatory_title` | PDF certificate template |
+| `alerts` | `expiry_days` | Alert thresholds before expiry (default 90, 30, 7) |
+| | `recert_window_days` | Recertification opens this many days before expiry (90) |
+| | `major_version_grace_days` | Grace period after a new major version (90) |
+
+Check a configuration without starting: `lectern --config lectern.toml check-config`.
+
+## Keycloak
+
+1. Create a confidential client `lectern`, standard flow only, redirect URI
+   `https://academy.example.com/auth/oidc/callback`, PKCE S256.
+2. To enforce MFA for staff, use an authentication flow with OTP/WebAuthn and map it to an
+   `acr` level (e.g. `gold`), then set `mfa_acr_values = ["gold"]`; or rely on the `amr`
+   claim if your setup emits it.
+3. Optionally create client roles `admin`, `trainer`, `channel_manager`, add a mapper
+   exposing them in the ID token, and set `roles_claim`.
+
+The e-mail claim must be verified by the provider (`email_verified`): an identity is
+linked to an existing account by e-mail on first sign-in.
+
+## Commands
+
+```
+lectern serve                     # default: migrations, background jobs, HTTP server
+lectern migrate
+lectern import-pack <dir|zip>
+lectern export-pack <out.zip>
+lectern grant-role <email> <admin|trainer|channel_manager>
+lectern check-config
+```
+
+## First start
+
+1. Deploy (see [operations](operations.md)), then `lectern grant-role you@company.com admin`.
+2. Import your content pack.
+3. In *Administration › Organizations*, create organizations and add a training manager
+   to each; they share their join code with their colleagues.
+
+
+---
+
+<!-- docs/customization.md -->
+
+# Customization
+
+Everything that identifies a brand is instance configuration. The code contains no brand
+name — CI fails if one appears (`scripts/check-brand.sh` with the `BRAND_DENYLIST`
+repository variable).
+
+## Colours, radii, fonts: design tokens
+
+`[theme.tokens]` in the configuration. The server renders them as CSS custom properties in
+`/theme.css`; the interface, server pages, e-mails, badges and certificates all read them.
+Components never contain a colour (an ESLint rule rejects hexadecimal literals).
+
+| Token | Used for |
+| --- | --- |
+| `color-primary`, `color-primary-contrast` | Buttons, links, header of e-mails and certificates, default badge colour |
+| `color-accent` | Highlights, default badge accent, stars |
+| `color-bg`, `color-surface`, `color-border` | Page background, cards, separators |
+| `color-text`, `color-muted` | Text |
+| `color-success`, `color-warning`, `color-danger` | Statuses |
+| `color-annotation`, `color-annotation-contrast` | Screenshot annotations |
+| `radius`, `radius-small`, `space`, `max-width` | Shapes and layout |
+| `font-body`, `font-heading`, `font-mono` | Font stacks |
+
+Fonts are served by the instance: put the files in the branding directory and declare them:
+
+```toml
+[[theme.fonts]]
+family = "Inter"
+src = "fonts/Inter-Variable.woff2"
+weight = "100 900"
+
+[theme.tokens]
+font-body = "'Inter', system-ui, sans-serif"
+```
+
+## Name, logo, links
+
+`[instance]`: `name`, `logo`, `favicon`, `public_url`, `contact_email`, `legal_notice_url`,
+`privacy_policy_url`, `documentation_url`.
+
+## Texts
+
+- Interface: bundled in `web/src/i18n/<lang>.json`. Override any key with
+  `<branding_dir>/locales/<lang>.json` (same structure, only the keys you change).
+  `{instance}` and `{product}` placeholders are replaced everywhere.
+- Server texts (e-mails, verification page, certificates): `server/locales/<lang>.toml`,
+  overridden by `<branding_dir>/locales/<lang>.toml`. Values are templates
+  (`{{ instance.name }}`, `{% if … %}`).
+
+## E-mails, verification page, badges
+
+Templates `email.html`, `verify.html`, `badge.svg` and `server.css` are embedded and can
+be replaced by files of the same name in `<branding_dir>/templates/`. They receive the
+instance configuration (`instance`) and the theme tokens (`theme`).
+
+Each track's badge is generated from `[badge]` in `track.toml` (label, ribbon, colours).
+Badge images are SVG for the web and PNG (600×600) for Open Badges and link previews.
+
+## Certificates (PDF)
+
+```toml
+[certificates]
+font = "fonts/Certificate-Regular.ttf"   # TTF/OTF, defaults to the bundled DejaVu Sans
+font_bold = "fonts/Certificate-Bold.ttf"
+logo = "logo.png"                        # PNG or JPEG
+signature_image = "signature.png"
+signatory_name = "Jane Doe"
+signatory_title = "Head of Academy"
+```
+
+Colours come from the theme tokens; texts from the `certificate.*` server strings.
+
+
+---
+
+<!-- docs/content-pack.md -->
+
+# Content pack format (version 1)
+
+The platform is published without content. Tracks, modules, scenarios, question banks
+and certification requirements are packaged as a **content pack**: a directory (or a
+`.zip` of it) of TOML, Markdown and image files, kept in the instance's own (private)
+repository and reviewed like code.
+
+- Import: `lectern import-pack <dir|zip>` or *Administration › Content › Import a pack*.
+- Export: `lectern export-pack out.zip` or *Administration › Content › Export content*.
+  An export is a valid pack: export, edit, re-import.
+
+A fictional example lives in [`examples/demo-pack`](../examples/demo-pack).
+
+## Layout
+
+```
+pack.toml                                   format version, requirement levels
+tracks/<track>/track.toml                   track settings, badge, exam definitions
+tracks/<track>/modules/<NN>-<module>.md     one module: TOML front matter + recap sheet
+tracks/<track>/files/…                      module attachments
+tracks/<track>/questions/*.toml             question banks (any file name)
+tracks/<track>/scenarios/<scenario>/scenario.toml   scenario + its questions
+tracks/<track>/scenarios/<scenario>/*.png           screenshots of that scenario
+```
+
+Identifiers (`<track>`, `<module>`, `<scenario>`) are lowercase slugs (`a-z`, `0-9`, `-`).
+Module order comes from the numeric prefix of the file name (`01-…`, `02-…`).
+
+## Import rules
+
+- **Idempotent.** Tracks, modules and scenarios are matched by slug, questions by `ref`.
+  Re-importing the same pack changes nothing; importing a new version updates in place.
+- **A pack is authoritative for the tracks it contains.** Modules and scenarios missing
+  from the pack are deleted (with the related progress); questions missing from the pack
+  are *deactivated*, never deleted, so past exam papers stay readable. Tracks absent from
+  the pack are left untouched.
+- **All or nothing.** The import runs in one transaction; any validation error aborts it
+  and reports the file and the problem.
+- Files are content-addressed (SHA-256): identical screenshots are stored once.
+
+## `pack.toml`
+
+```toml
+format = 1
+name = "Partner academy content"
+
+# Requirement levels: how many valid certified people each kind of organization needs,
+# per track, to hold a level (e.g. partner tiers). Generic: any names, any number.
+[[levels]]
+slug = "partner-silver"
+org_kind = "partner"        # partner | customer
+name = "Silver"
+rank = 1                    # order of the levels
+requirements = { associate = 1, engineer = 2 }
+```
+
+## `track.toml`
+
+```toml
+title = "Engineer"
+summary = "Deploy, administer and provide first and second level support."
+description = """Markdown shown on the track page."""
+audiences = ["partner"]     # any of: public, partner, customer
+position = 3                # order in the catalog
+prerequisite = "engineer"   # optional: slug of a track whose valid certification is required to sit the exam
+prerequisites = "Markdown text describing the expected background."
+estimated_minutes = 720
+scenarios_required = true   # all (non exam-only) scenarios must be completed before the exam
+validity_months = 24        # omit for certifications that never expire
+module_quiz_pass_percent = 70
+published = true
+
+[badge]                     # all optional
+label = "ENGINEER"          # big text (defaults to the title)
+subtitle = "Certified"      # ribbon
+color = "#7c3aed"           # defaults to the theme primary colour
+accent = "#f59e0b"          # defaults to the theme accent colour
+
+[exam]
+free_attempts = 2           # omit for unlimited attempts
+cooldown_days = 14          # wait between attempts once the free ones are used
+bank_factor = 3             # the bank must hold at least 3× the questions drawn
+provisional = false         # certifications issued are provisional (see below)
+
+[[exam.sections]]
+title = "Multiple-choice"
+kind = "questions"
+pool = "exam"               # exam | recert
+question_count = 40
+duration_minutes = 60
+pass_percent = 75
+
+[[exam.sections]]
+title = "Case study"
+kind = "case_study"
+scenario_count = 2          # exam-only scenarios drawn; at least 2× this many must exist
+duration_minutes = 90
+pass_percent = 75           # ignored when the section only has written questions
+
+[recert_exam]               # optional short exam on what's new; omit to reuse [exam]
+bank_factor = 3
+[[recert_exam.sections]]
+title = "What's new"
+kind = "questions"
+pool = "recert"
+question_count = 10
+duration_minutes = 20
+pass_percent = 75
+```
+
+Sections are taken one after the other, each with its own timer. The exam stops at the
+first failed section. A section containing written questions goes to an evaluator
+(attempt status *pending review*) and is decided manually.
+
+**Provisional certifications.** During a transition period (e.g. while case studies are
+being written), publish a reduced exam with `provisional = true`. Holders of a
+provisional certification take the full `[exam]` at their recertification.
+
+## Modules: `modules/<NN>-<slug>.md`
+
+```markdown
++++
+title = "Architecture"
+video = "https://media.example.com/engineer/architecture/index.m3u8"   # MP4 or HLS
+captions = "https://media.example.com/engineer/architecture/fr.vtt"    # WebVTT
+duration_minutes = 9
+doc_url = "/architecture"     # relative to instance.documentation_url, or absolute
+attachments = [{ file = "files/architecture.pdf", label = "Architecture diagram" }]
++++
+
+Recap sheet in **Markdown** (tables, lists, code blocks…).
+```
+
+A module is completed when its content is viewed (video watched to the end, or sheet
+marked as read) and, if it has a quiz, the quiz reaches `module_quiz_pass_percent`.
+
+## Questions: `questions/*.toml`
+
+```toml
+[[questions]]
+ref = "eng-arch-001"        # stable unique identifier across the whole instance
+pool = "exam"               # quiz | exam | recert | case
+module = "architecture"     # quiz questions: the module they close
+prompt = """Which flow does the gateway agent need?"""
+explanation = "Shown after a quiz; never shown during or after an exam."
+choices = [
+  { text = "Outbound 443/tcp", correct = true },
+  { text = "Inbound 3389/tcp" },
+  { id = "c", text = "Inbound 22/tcp" },   # ids default to a, b, c…
+]
+active = true
+```
+
+- Several correct choices are allowed; an answer is right only if it selects exactly
+  the correct set. Learners always see checkboxes, so the number of correct answers is
+  not revealed.
+- `format = "written"` (no choices) asks for a free-text answer graded by an evaluator.
+- Pools: `quiz` (module or scenario check, corrected immediately), `exam`, `recert`
+  (certification banks, answers never revealed), `case` (questions of an exam-only scenario).
+- Write prompts and choices so that they make sense in any order: choices are shuffled.
+
+## Scenarios: `scenarios/<slug>/scenario.toml`
+
+```toml
+title = "Gateway offline"
+kind = "diagnostic"        # implementation | diagnostic
+family = "gateway-offline" # troubleshooting family of the documentation
+exam_only = false          # true: case study for exams, never shown in the track
+position = 2
+context = "Users cannot open any session. The console shows the gateway offline."
+pitfalls = "Restarting the agent without checking the outbound flow only hides the problem."
+
+[[steps]]
+action = "Observe the gateway status and its last-seen time."
+image = "step-1.png"        # file in this directory (PNG, JPEG, WebP)
+alt = "Gateway shown offline"
+expected = "The gateway is offline since 10:42: something changed at that time."
+annotations = [
+  { type = "box", x = 25, y = 22, w = 50, h = 14, label = "1" },
+  { type = "arrow", x = 70, y = 70, x2 = 85, y2 = 80, label = "2" },
+  { type = "marker", x = 27, y = 29, label = "3" },
+]
+
+[[questions]]               # pool "quiz" = check at the end; "case" = exam question
+ref = "eng-sc-offline-1"
+pool = "quiz"
+prompt = "What was the cause?"
+choices = [{ text = "Outbound 443/tcp blocked", correct = true }, { text = "Expired licence" }]
+```
+
+Annotation coordinates are **percentages** of the image (0–100), so they survive any
+resizing. Their colour is the theme token `color-annotation`. The annotation editor in
+*Administration › Content › (track) › Scenarios* produces these values with the mouse.
+
+Screenshots must come from a demo tenant with **fictitious data only** — no real server
+name, address or user. Screenshots of exam-only scenarios are only served to staff and to
+candidates whose open attempt contains that case study.
+
+## Validation
+
+`cargo test` validates the demo pack; a pack is validated in full before any write.
+Typical errors: unknown module/scenario referenced by a question, quiz question without a
+module or scenario, choice question without a correct answer, duplicate `ref`, missing
+image, annotation out of bounds, invalid exam definition.
+
+
+---
+
+<!-- docs/certification.md -->
+
+# Exams, certifications and requirements
+
+## Learner path
+
+1. **Sign in** (OIDC or e-mail link), then optionally request to join an organization
+   with its join code. The training manager approves the request. Without organization,
+   the learner is an *individual* and only sees `public` tracks.
+2. **Modules**: video (position saved, resumed), recap sheet, attachments, quiz with
+   correction and explanations.
+3. **Scenarios** (mandatory when `scenarios_required`): context, steps with annotated
+   screenshots and expected results, pitfalls, verification questions.
+4. **Exam**, unlocked when all modules (and scenarios) are completed and the prerequisite
+   certification is valid.
+5. **Certification**: badge, PDF certificate, public verification page, Open Badges
+   assertion, LinkedIn "add to profile" link. Expiry alerts, then recertification.
+
+## Exam integrity
+
+- Questions drawn at random from the bank; the bank must contain at least `bank_factor`
+  (default 3) times the number of questions drawn, otherwise the exam is not offered.
+- Answer choices shuffled per attempt; checkboxes always (the number of correct answers is
+  not revealed).
+- Case studies: exam-only scenarios, never shown in the track, drawn at random and
+  different from the learner's previous attempt; at least twice the number drawn must exist.
+- Timed sections, deadline enforced by the server (30 s network grace); an abandoned
+  section is graded automatically when its time is up.
+- One exam in progress per account (database constraint).
+- Exam answers and explanations are never sent to learners; exam-only screenshots are
+  only served to candidates whose open attempt contains them, and to staff.
+- Grading is exact match per question; scores are floored (74.9 % never passes 75 %).
+
+## Attempts policy
+
+`free_attempts` attempts are included (unlimited when omitted). Beyond them, every new
+attempt needs an **attempt credit** and respects `cooldown_days` after the previous
+attempt. Credits are granted by administrators today (*Administration › Users*) and will
+be created by the payment module later. Attempts are counted since the last success.
+
+## Validity and recertification
+
+- `validity_months` per track; tracks without it never expire.
+- Recertification opens `alerts.recert_window_days` before expiry, with the short
+  `recert_exam` (or the full exam if none, or if the current certification is
+  provisional). A renewal extends from the previous expiry date, so renewing early costs
+  nothing.
+- **New major product version:** *Administration › Settings › New major version*. Every
+  valid certification obtained on another version then expires at most
+  `alerts.major_version_grace_days` later. Also update `instance.product_major_version`
+  so new certifications record the new version.
+- Alerts at 90, 30 and 7 days (configurable) to the learner and their training managers;
+  each threshold is sent once, and a late first alert does not trigger the older ones.
+- Expired, revoked or superseded certifications no longer count for requirements.
+
+## Manual evaluation
+
+Written answers (e.g. complex case studies) put the attempt in *pending review*.
+Trainers see it in *Reviews*: the scenario, the answers and the expected choices, an
+evaluation grid, a comment sent to the learner, and the decision. An evaluator cannot
+review their own attempt. Interviews happen outside the platform; record them as a grid
+criterion.
+
+## Requirement levels (partner tiers)
+
+Levels are generic: for an organization kind (`partner` or `customer`), a name, a rank and
+the number of valid certified members required per track. They are defined in the content
+pack or in *Administration › Requirements*. Organizations are assigned a current level.
+
+- Training managers see, for each level, valid certified members vs required and the gap.
+- Channel managers see every organization, its level, whether it is met, the highest level
+  met, and can export a CSV.
+- The partner portal reads `GET /api/v1/certified` with an API token.
+
+
+---
+
+<!-- docs/operations.md -->
+
+# Operations
+
+## Container image
+
+`Dockerfile` builds a single image: the Rust server and the built front-end, on a
+distroless base (no shell), running as the unprivileged user 65532 with a read-only root
+filesystem. Base images are pinned by digest. Configuration comes from a mounted
+file (`LECTERN_CONFIG`) and environment variables.
+
+## Kubernetes (K3s, GitOps)
+
+`deploy/k8s/base` is a Kustomize base: Deployment (hardened security context, probes),
+Service, Ingress (Traefik + cert-manager), PersistentVolumeClaims, NetworkPolicy and the
+daily backup CronJob. `deploy/k8s/overlays/example` shows an instance overlay:
+configuration and branding as generated ConfigMaps, host name, image tag. Point Argo CD or
+Flux at your own overlay in your GitOps repository.
+
+Secrets (`lectern-secrets`) are created with your secret tooling (SOPS, Sealed Secrets,
+External Secrets) with keys `DATABASE_URL`, `LECTERN__AUTH__OIDC__CLIENT_SECRET`,
+`LECTERN__MAIL__SMTP_URL`. Host the database (e.g. CloudNativePG) and the cluster in
+France or the EU.
+
+Migrations run automatically at start-up (`lectern serve`), inside a transaction each.
+
+## Backups
+
+The `lectern-backup` CronJob runs daily at 02:17: `pg_dump` (custom format) and a tarball
+of the assets directory, kept 14 days on the `lectern-backups` volume. Copy that volume
+off-site with your usual tooling. Restore:
+
+```sh
+pg_restore --clean --no-owner -d "$DATABASE_URL" db-YYYYMMDD-HHMMSS.dump
+tar -C /app/data -xzf assets-YYYYMMDD-HHMMSS.tar.gz
+```
+
+Test a restore regularly.
+
+## Monitoring
+
+- `GET /healthz` (process alive) and `GET /readyz` (database reachable).
+- JSON logs with `LECTERN_LOG_FORMAT=json`; level with `RUST_LOG` (default `info`).
+- Watch for: `e-mail delivery failed` warnings, rows of `email_outbox` with
+  `attempts >= 8` (given up), `internal error` log lines.
+
+## Videos
+
+Serve videos from storage you control (object storage + CDN, or a self-hosted streaming
+server). Use HLS (`.m3u8`) for adaptive streaming; MP4 also works. Add the origin to
+`server.media_origins` (CSP) and allow CORS from the academy origin when captions are
+served from that origin.
+
+## Upgrades
+
+Roll out a new image tag through GitOps. Schema migrations are additive within a minor
+version. Read the release notes before a major version.
+
+## Project website
+
+`site/` is the public project website (GitHub Pages), generated by
+`python3 scripts/build-site.py` from the content in that script, the README and `docs/`
+(including `llms.txt` / `llms-full.txt` for AI answer engines, `sitemap.xml` and
+`robots.txt`). `python3 scripts/check-site.py` checks titles, descriptions, structured
+data, links, images and the FAQ. The `Site` workflow runs both and deploys `main`
+(enable *Settings › Pages › Source: GitHub Actions* once).
+
+
+---
+
+<!-- docs/security.md -->
+
+# Security
+
+The academy is published by a security vendor: it applies the practices it teaches.
+
+## Authentication and sessions
+
+- OpenID Connect, authorization code + PKCE, nonce and access-token hash verified; the
+  HTTP client never follows redirects (SSRF).
+- Passwordless e-mail sign-in: single-use 256-bit tokens, stored hashed (SHA-256), valid
+  15 minutes, rate-limited per address; the link carries the token in the URL fragment and
+  the page POSTs it, so mail scanners prefetching links cannot consume it. The response
+  is identical whether the address exists or not.
+- Sessions: random 256-bit tokens in an `HttpOnly`, `Secure`, `SameSite=Lax` cookie named
+  `__Host-lectern_session` over HTTPS (the prefix forbids `Domain` and requires `Secure` and
+  `Path=/`, so a sibling sub-domain cannot plant a session); only their hash is stored;
+  server-side expiry and logout.
+- Rate limiting: per address and instance-wide limits on sign-in e-mails in the
+  application; Traefik limits for the whole site and stricter ones for sign-in routes
+  (`deploy/k8s/overlays/example/ratelimit.yaml`).
+- Display names are stripped of Markdown/HTML syntax characters before being stored, as
+  they are interpolated into e-mails.
+- MFA is required for the roles listed in `auth.require_mfa_for` (trainer, admin by
+  default): the session must come from an OIDC sign-in whose `acr`/`amr` denotes MFA.
+
+## Request forgery and injection
+
+- CSRF: synchronizer token (`X-CSRF-Token` header, compared in constant time) on every
+  state-changing request, plus rejection of cross-origin `Origin` headers.
+- SQL: bound parameters only; dynamic SQL limited to compile-time constant fragments.
+- XSS: Markdown is rendered and sanitized server-side (ammonia: allow-listed tags and URL
+  schemes, `rel="noopener noreferrer"`); React escapes everything else; strict CSP
+  without `unsafe-inline`; templates auto-escape.
+- Content packs: zip-slip protection, uncompressed size limit, all-or-nothing validation.
+- Uploads: content-type allow-list, content-addressed storage, non-inline types served as
+  attachments, `X-Content-Type-Options: nosniff`.
+- CSV exports neutralize spreadsheet formulas.
+
+## Headers
+
+`Content-Security-Policy` (`default-src 'self'`, `frame-ancestors 'none'`,
+`object-src 'none'`, `base-uri 'none'`), `Strict-Transport-Security` (when
+`secure_cookies`), `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`,
+`Cross-Origin-Opener-Policy`, `Cache-Control: no-store` on the API.
+
+## Authorization and isolation
+
+- Every handler checks the role it needs; training managers only query rows of the
+  organization they manage; restricted tracks answer 404 to non-members.
+- Exam answer keys and explanations never reach learners; exam-only screenshots are only
+  served to staff and to the candidate whose open attempt contains them.
+- Evaluators cannot review their own attempt; administrators cannot remove their own
+  admin role.
+- API tokens for integrations are random, shown once, stored hashed, revocable.
+
+## Audit
+
+`audit_log` records sign-ins, administration actions (organizations, roles, credits,
+revocations, content changes, pack imports/exports, API tokens), membership decisions,
+exam starts and results, evaluations.
+
+## Supply chain
+
+- `cargo-deny` (`deny.toml`) fails the build on any RustSec vulnerability, unmaintained
+  or unsound crate (direct or transitive), yanked release, non-permissive license, crate
+  from outside crates.io, or OpenSSL/native-tls. The only exception (RUSTSEC-2023-0071,
+  unreachable code path) is justified in the file.
+- Minimal features: e.g. the zip reader only supports deflate (no bzip2, lzma, zstd,
+  ppmd, AES code exposed to uploaded archives); PDF text uses `skrifa` instead of
+  unmaintained shaping crates.
+- `npm audit` (all dependencies, moderate and above) and `npm audit signatures`;
+  `npm ci --ignore-scripts` everywhere (no install scripts run).
+- GitHub Actions pinned to commit SHAs, read-only `GITHUB_TOKEN`, no persisted
+  credentials; container base images pinned by digest; Dependabot updates Cargo, npm,
+  Actions and Docker weekly.
+- Runtime image: distroless (no shell, no package manager), non-root user 65532.
+- CI scans the built image (Trivy, high/critical fail the build), scans the Dockerfile and
+  Kubernetes manifests for misconfigurations, and produces an SPDX SBOM. CodeQL
+  (security-extended) analyses Rust, TypeScript and the workflows.
+
+## Development
+
+- CI: `cargo fmt`, `clippy -D warnings`, unit and API tests on PostgreSQL, ESLint,
+  TypeScript, Vitest, supply-chain checks above, brand check, image build and scan.
+- Code review on every change (see `CONTRIBUTING.md`).
+- Before each production release: run the test suite, review the dependency audit, and run
+  a dynamic scan (e.g. OWASP ZAP baseline) against a staging instance.
+
+Report vulnerabilities as described in [SECURITY.md](../SECURITY.md).
+
+
+---
+
+<!-- docs/privacy.md -->
+
+# Personal data (GDPR)
+
+## Data collected
+
+Only what training requires:
+
+| Data | Purpose |
+| --- | --- |
+| E-mail, name | Account, sign-in, certificates |
+| Organization and role in it | Access to tracks, requirement tracking |
+| Progress, quiz scores, exam answers and results | Training follow-up, certification |
+| Certifications | Badges, verification, requirement levels |
+| Ratings of tracks | Content quality |
+| Sign-in and administration events | Security (audit log) |
+
+No tracking, analytics or third-party scripts; fonts, images and videos are served by the
+instance or by storage it controls.
+
+## Legal basis and information
+
+Define it in the instance's privacy policy (`instance.privacy_policy_url`, linked in the
+footer, e-mails and sign-in page): typically the performance of the partner contract for
+partners, the customer contract for customer administrators, and consent for public
+learners.
+
+## Retention
+
+The platform keeps data until the account is deleted. Housekeeping deletes expired
+sessions and sign-in links, and sent e-mails after 30 days. Set retention periods in the
+privacy policy (e.g. accounts inactive for 3 years) and apply them; inactive accounts can
+be listed from `users.last_login_at`.
+
+## Learners' rights (self-service, *My profile*)
+
+- **Access / portability**: *Download my data* exports everything as JSON.
+- **Rectification**: name editable; e-mail through the identity provider or support.
+- **Erasure**: *Delete my account* deletes the account, memberships, progress, attempts
+  and certifications (their verification pages then answer "not found"). Anonymous
+  per-question statistics are kept; audit entries lose the link to the person.
+- **Public page**: the verification page shows only the name, the track and the dates; it
+  can be made private at any time (it then answers "not found", and the Open Badges
+  assertion too). Open Badges assertions publish a salted hash of the e-mail, never the
+  e-mail itself.
+
+## Screenshots
+
+Scenario screenshots are made on a demo tenant with fictitious data only: no real server
+name, address or user of a customer.
+
+
+---
+
+<!-- docs/api.md -->
+
+# HTTP API
+
+The front-end uses the JSON API under `/api`. Authentication is the session cookie;
+state-changing requests need the `X-CSRF-Token` header (value from `GET /api/me`). Errors
+are `{"error": "<code>", "message": "…", "details": …}` with a 4xx/5xx status.
+
+## Integration API (partner portal)
+
+`GET /api/v1/certified` with `Authorization: Bearer <token>` (tokens: *Administration ›
+API access*):
+
+```json
+{
+  "generated_at": "2026-10-02T12:00:00Z",
+  "organizations": [
+    { "id": "…", "name": "Partner A", "kind": "partner",
+      "valid_certifications": { "associate": 2, "engineer": 3 } }
+  ]
+}
+```
+
+Counts are distinct approved members holding a valid (not expired, revoked or superseded)
+certification. A CSV with the same data: `GET /api/partners/export.csv` (channel managers,
+administrators).
+
+## Public endpoints
+
+| Endpoint | Content |
+| --- | --- |
+| `GET /verify/{id}` | Verification page (HTML) |
+| `GET /verify/{id}/badge.svg`, `badge.png` | Badge of a certification |
+| `GET /ob/issuer` | Open Badges 2.0 issuer profile |
+| `GET /ob/badges/{track}` | BadgeClass; image at `/ob/badges/{track}/image.png` |
+| `GET /ob/assertions/{id}` | Assertion (hosted verification, hashed recipient) |
+| `GET /api/instance`, `/theme.css` | Instance settings and theme |
+| `GET /api/catalog` | Tracks visible to the caller |
+
+## Deep links from the documentation
+
+Link to `https://<academy>/tracks/<track>` or
+`https://<academy>/tracks/<track>/modules/<module>`; modules link back to the documentation
+with their `doc_url`.

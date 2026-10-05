@@ -3,6 +3,8 @@
 White-label academy for software vendors: train and certify partners and customers with
 courses, hands-on scenarios, exams and verifiable badges.
 
+**Website:** <https://phdhebde.github.io/Lectern/> (français) · <https://phdhebde.github.io/Lectern/en/> (English)
+
 One instance = one brand. Everything a learner sees — name, colours, fonts, logo, texts,
 e-mails, certificates, badges — comes from the instance configuration. The platform ships
 without any content: tracks, scenarios and question banks are imported as a
