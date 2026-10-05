@@ -30,10 +30,11 @@ administrators).
 | `GET /verify/{id}` | Verification page (HTML) |
 | `GET /verify/{id}/badge.svg`, `badge.png` | Badge of a certification |
 | `GET /ob/issuer` | Open Badges 2.0 issuer profile |
-| `GET /ob/badges/{track}` | BadgeClass; image at `/ob/badges/{track}/image.png` |
+| `GET /ob/badges/{track}` | BadgeClass; image at `/ob/badges/{track}/image.png` (or `image.svg`) |
 | `GET /ob/assertions/{id}` | Assertion (hosted verification, hashed recipient) |
 | `GET /api/instance`, `/theme.css` | Instance settings and theme |
 | `GET /api/catalog` | Tracks visible to the caller |
+| `GET /healthz`, `/readyz` | Liveness and readiness (database reachable), see [operations](operations.md) |
 
 ## Deep links from the documentation
 

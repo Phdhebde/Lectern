@@ -32,9 +32,11 @@ Migrations run automatically at start-up (`lectern serve`), inside a transaction
 
 ## Backups
 
-On Kubernetes, the `lectern-backup` CronJob runs daily at 02:17: `pg_dump` (custom format) and a tarball
-of the assets directory, kept 14 days on the `lectern-backups` volume. Copy that volume
-off-site with your usual tooling (Compose and on-premises: see their guides). Restore:
+On Kubernetes, the `lectern-backup` CronJob runs daily at 02:17: `pg_dump` (custom format)
+and a tarball of the assets directory, kept 14 days on the `lectern-backups` volume. Its
+image is `postgres:16`: when the database runs a newer major version, change the image in
+your overlay (`pg_dump` must be at least the server's version). Copy that volume off-site
+with your usual tooling (Compose and on-premises: see their guides). Restore:
 
 ```sh
 pg_restore --clean --no-owner -d "$DATABASE_URL" db-YYYYMMDD-HHMMSS.dump

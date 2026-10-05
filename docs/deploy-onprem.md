@@ -8,7 +8,7 @@ be split: database server, application server, web front.
 browser ──────────▶ nginx ──── /api, /auth, /verify, /ob, /branding, *.css ──▶ lectern (API)
                      │                                                          │
                      └── front-end (static files, option B)                     ▼
-                                                                          PostgreSQL 16
+                                                                          PostgreSQL 14+
 ```
 
 Files: [`deploy/onprem`](../deploy/onprem). Commands below are for Debian 12 / Ubuntu 24.04;
@@ -39,10 +39,11 @@ image: `docker create --name x <image>`, `docker cp x:/usr/local/bin/lectern .`,
 
 ## 2. PostgreSQL
 
-PostgreSQL 14+ (16 recommended), UTF-8. On the database host:
+PostgreSQL 14 or later, UTF-8: the distribution's package is enough (15 on Debian 12, 16
+on Ubuntu 24.04; the PGDG apt repository has newer versions). On the database host:
 
 ```sh
-apt install postgresql-16
+apt install postgresql
 sudo -u postgres createuser --pwprompt lectern
 sudo -u postgres createdb --owner=lectern --encoding=UTF8 lectern
 ```
@@ -130,7 +131,7 @@ overlay). Any other reverse proxy works under the same rules.
 
 ## 5. Backups
 
-On the application host (needs `pg_dump` of the server's major version: `postgresql-client-16`):
+On the application host (needs `pg_dump` of the server's major version or newer, e.g. `postgresql-client`):
 
 ```sh
 install -d -m 0750 -o lectern -g lectern /var/backups/lectern
