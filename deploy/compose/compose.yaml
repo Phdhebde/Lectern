@@ -11,7 +11,7 @@ name: lectern
 
 services:
   db:
-    image: postgres:18@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722
+    image: postgres:18@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336
     restart: unless-stopped
     environment:
       POSTGRES_USER: lectern
@@ -88,7 +88,7 @@ services:
   # On demand: `docker compose run --rm backup` (schedule it with cron or a systemd timer).
   backup:
     profiles: ["backup"]
-    image: postgres:18@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722
+    image: postgres:18@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336
     depends_on:
       db:
         condition: service_healthy
